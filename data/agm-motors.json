@@ -1,0 +1,317 @@
+{
+  "sourceUpdateDate": "2026-08-06T00:00:00",
+  "motors": [
+    {
+      "legacyKey": "AGM 1",
+      "name": "AGM 1",
+      "hours": 7994,
+      "load": 1412,
+      "active": true,
+      "source": "agm-bakim-merkezi"
+    },
+    {
+      "legacyKey": "AGM 2",
+      "name": "AGM 2",
+      "hours": 8618,
+      "load": 1350,
+      "active": true,
+      "source": "agm-bakim-merkezi"
+    },
+    {
+      "legacyKey": "AGM 3",
+      "name": "AGM 3",
+      "hours": 6753,
+      "load": 1412,
+      "active": true,
+      "source": "agm-bakim-merkezi"
+    },
+    {
+      "legacyKey": "AGM 4",
+      "name": "AGM 4",
+      "hours": 6529,
+      "load": 1250,
+      "active": true,
+      "source": "agm-bakim-merkezi"
+    },
+    {
+      "legacyKey": "AGM 5",
+      "name": "AGM 5",
+      "hours": 7106,
+      "load": 1362,
+      "active": true,
+      "source": "agm-bakim-merkezi"
+    },
+    {
+      "legacyKey": "AGM 6",
+      "name": "AGM 6",
+      "hours": 7454,
+      "load": 1300,
+      "active": true,
+      "source": "agm-bakim-merkezi"
+    },
+    {
+      "legacyKey": "AGM 7",
+      "name": "AGM 7",
+      "hours": 122039,
+      "load": 0,
+      "active": true,
+      "source": "agm-bakim-merkezi"
+    },
+    {
+      "legacyKey": "AGM 8",
+      "name": "AGM 8",
+      "hours": 34561,
+      "load": 822,
+      "active": true,
+      "source": "agm-bakim-merkezi"
+    },
+    {
+      "legacyKey": "AGM 9",
+      "name": "AGM 9",
+      "hours": 7841,
+      "load": 1412,
+      "active": true,
+      "source": "agm-bakim-merkezi"
+    },
+    {
+      "legacyKey": "AGM 10",
+      "name": "AGM 10",
+      "hours": 7677,
+      "load": 1408,
+      "active": true,
+      "source": "agm-bakim-merkezi"
+    },
+    {
+      "legacyKey": "AGM 11",
+      "name": "AGM 11",
+      "hours": 3054,
+      "load": 1361,
+      "active": true,
+      "source": "agm-bakim-merkezi"
+    },
+    {
+      "legacyKey": "AGM 12",
+      "name": "AGM 12",
+      "hours": 8707,
+      "load": 1417,
+      "active": true,
+      "source": "agm-bakim-merkezi"
+    },
+    {
+      "legacyKey": "AGM 13",
+      "name": "AGM 13",
+      "hours": 23805,
+      "load": 1250,
+      "active": true,
+      "source": "agm-bakim-merkezi"
+    },
+    {
+      "legacyKey": "AGM 14",
+      "name": "AGM 14",
+      "hours": 21221,
+      "load": 1033,
+      "active": true,
+      "source": "agm-bakim-merkezi"
+    },
+    {
+      "legacyKey": "AGM 15",
+      "name": "AGM 15",
+      "hours": 8768,
+      "load": 1333,
+      "active": true,
+      "source": "agm-bakim-merkezi"
+    },
+    {
+      "legacyKey": "AGM 16",
+      "name": "AGM 16",
+      "hours": 1972,
+      "load": 1108,
+      "active": true,
+      "source": "agm-bakim-merkezi"
+    },
+    {
+      "legacyKey": "AGM 17",
+      "name": "AGM 17",
+      "hours": 20055,
+      "load": 1083,
+      "active": true,
+      "source": "agm-bakim-merkezi"
+    },
+    {
+      "legacyKey": "AGM 18",
+      "name": "AGM 18",
+      "hours": 16857,
+      "load": 1200,
+      "active": true,
+      "source": "agm-bakim-merkezi"
+    },
+    {
+      "legacyKey": "AGM 19",
+      "name": "AGM 19",
+      "hours": 26612,
+      "load": 1079,
+      "active": true,
+      "source": "agm-bakim-merkezi"
+    },
+    {
+      "legacyKey": "AGM 20",
+      "name": "AGM 20",
+      "hours": 24793,
+      "load": 1063,
+      "active": true,
+      "source": "agm-bakim-merkezi"
+    },
+    {
+      "legacyKey": "AGM 21",
+      "name": "AGM 21",
+      "hours": 19307,
+      "load": 869,
+      "active": true,
+      "source": "agm-bakim-merkezi"
+    },
+    {
+      "legacyKey": "AGM 22",
+      "name": "AGM 22",
+      "hours": 43108,
+      "load": 1192,
+      "active": true,
+      "source": "agm-bakim-merkezi"
+    },
+    {
+      "legacyKey": "AGM 23",
+      "name": "AGM 23",
+      "hours": 15802,
+      "load": 0,
+      "active": true,
+      "source": "agm-bakim-merkezi"
+    },
+    {
+      "legacyKey": "AGM 24",
+      "name": "AGM 24",
+      "hours": 17493,
+      "load": 929,
+      "active": true,
+      "source": "agm-bakim-merkezi"
+    },
+    {
+      "legacyKey": "AGM 25",
+      "name": "AGM 25",
+      "hours": 58815,
+      "load": 1196,
+      "active": true,
+      "source": "agm-bakim-merkezi"
+    },
+    {
+      "legacyKey": "AGM 26",
+      "name": "AGM 26",
+      "hours": 56446,
+      "load": 1226,
+      "active": true,
+      "source": "agm-bakim-merkezi"
+    },
+    {
+      "legacyKey": "AGM 27",
+      "name": "AGM 27",
+      "hours": 72501,
+      "load": 1412,
+      "active": true,
+      "source": "agm-bakim-merkezi"
+    },
+    {
+      "legacyKey": "AGM 28",
+      "name": "AGM 28",
+      "hours": 123227,
+      "load": 1346,
+      "active": true,
+      "source": "agm-bakim-merkezi"
+    },
+    {
+      "legacyKey": "AGM 29",
+      "name": "AGM 29",
+      "hours": 120921,
+      "load": 995,
+      "active": true,
+      "source": "agm-bakim-merkezi"
+    },
+    {
+      "legacyKey": "AGM 30",
+      "name": "AGM 30",
+      "hours": 116017,
+      "load": 1200,
+      "active": true,
+      "source": "agm-bakim-merkezi"
+    },
+    {
+      "legacyKey": "AGM 31",
+      "name": "AGM 31",
+      "hours": 94031,
+      "load": 1143,
+      "active": true,
+      "source": "agm-bakim-merkezi"
+    },
+    {
+      "legacyKey": "AGM 32",
+      "name": "AGM 32",
+      "hours": 95123,
+      "load": 1121,
+      "active": true,
+      "source": "agm-bakim-merkezi"
+    },
+    {
+      "legacyKey": "AGM 33",
+      "name": "AGM 33",
+      "hours": 80039,
+      "load": 1100,
+      "active": true,
+      "source": "agm-bakim-merkezi"
+    },
+    {
+      "legacyKey": "AGM 34",
+      "name": "AGM 34",
+      "hours": 42818,
+      "load": 1029,
+      "active": true,
+      "source": "agm-bakim-merkezi"
+    },
+    {
+      "legacyKey": "AGM 35",
+      "name": "AGM 35",
+      "hours": 90306,
+      "load": 1144,
+      "active": true,
+      "source": "agm-bakim-merkezi"
+    },
+    {
+      "legacyKey": "AGM 36",
+      "name": "AGM 36",
+      "hours": 78427,
+      "load": 1163,
+      "active": true,
+      "source": "agm-bakim-merkezi"
+    },
+    {
+      "legacyKey": "AGM 37",
+      "name": "AGM 37",
+      "hours": 63546,
+      "load": 1038,
+      "active": true,
+      "source": "agm-bakim-merkezi"
+    },
+    {
+      "legacyKey": "AGM 38",
+      "name": "AGM 38",
+      "hours": 4871,
+      "load": 1275,
+      "active": true,
+      "source": "agm-bakim-merkezi"
+    },
+    {
+      "legacyKey": "AGM 39",
+      "name": "AGM 39",
+      "hours": 4639,
+      "load": 1417,
+      "active": true,
+      "source": "agm-bakim-merkezi"
+    }
+  ]
+}
