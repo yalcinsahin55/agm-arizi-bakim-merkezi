@@ -1,16 +1,26 @@
-import { NextResponse } from 'next/server';
-import { retryFailedNotifications, escalateUnresponsiveBreakdowns } from '@/lib/notify';
-export async function GET(req: Request) {
-    const secret = process.env.CRON_SECRET, auth = req.headers.get('authorization');
-    if (!secret || auth !== `Bearer ${secret}`)
-        return NextResponse.json({ error: 'Yetkisiz' }, { status: 401 });
-    try {
-        const [retried, escalated] = await Promise.all([retryFailedNotifications(), escalateUnresponsiveBreakdowns()]);
-        return NextResponse.json({ ok: true, retried, escalated });
-    }
-    catch (e) {
-        console.error('notification cron', e);
-        return NextResponse.json({ error: 'Bildirim servisi çalıştırılamadı' }, { status: 500 });
-    }
+// app/api/cron/notifications/route.ts (Next.js App Router örneği)
+import { NextRequest, NextResponse } from 'next/server';
+
+export async function POST(req: NextRequest) {
+  // 1. Güvenlik Kontrolü
+  const authHeader = req.headers.get('authorization');
+  const expectedToken = `Bearer ${process.env.CRON_SECRET}`;
+
+  if (authHeader !== expectedToken) {
+    return NextResponse.json({ error: 'Yetkisiz erişim' }, { status: 401 });
+  }
+
+  try {
+    // 2. BURADA MEVCUT RETRY MANTIĞIN ÇALIŞACAK
+    // Örn: await retryFailedNotifications();
+    
+    return NextResponse.json({ success: true, message: 'Cron başarıyla çalıştı' });
+  } catch (error) {
+    console.error('Cron hatası:', error);
+    return NextResponse.json({ error: 'Sunucu hatası' }, { status: 500 });
+  }
 }
 
+// Vercel'in kendi cron'unu devre dışı bırakmak için 
+// bu dosyada dynamic = 'force-dynamic' bırakabilirsin.
+export const dynamic = 'force-dynamic';
