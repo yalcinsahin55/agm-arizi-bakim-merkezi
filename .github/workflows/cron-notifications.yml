@@ -2,27 +2,51 @@ name: Trigger Notification Retry Cron
 
 on:
   schedule:
-    # Her 5 dakikada bir çalışır (UTC saatine göre)
     - cron: '*/5 * * * *'
-  
-  # İstersen GitHub arayüzünden manuel olarak da tetikleyebilirsin
-  workflow_dispatch: 
+  workflow_dispatch:
 
 jobs:
   trigger-cron:
     runs-on: ubuntu-latest
     steps:
+      - name: Debug Secrets (Güvenli)
+        run: |
+          echo "APP_URL tanımlı mı?: ${{ secrets.APP_URL != '' }}"
+          echo "CRON_SECRET tanımlı mı?: ${{ secrets.CRON_SECRET != '' }}"
+          
+          if [ -z "${{ secrets.APP_URL }}" ]; then
+            echo "❌ HATA: APP_URL secret'ı GitHub'da tanımlanmamış!"
+            exit 1
+          fi
+          
+          if [ -z "${{ secrets.CRON_SECRET }}" ]; then
+            echo "❌ HATA: CRON_SECRET secret'ı GitHub'da tanımlanmamış!"
+            exit 1
+          fi
+
       - name: Call Cron Endpoint
         run: |
-          echo "Cron tetikleniyor: ${{ secrets.APP_URL }}/api/cron/notifications"
-          RESPONSE=$(curl -s -o response.txt -w "%{http_code}" -X POST "${{ secrets.APP_URL }}/api/cron/notifications" \
+          # URL'de sondaki / temizlenir (çift / oluşmasını engeller)
+          BASE_URL="${{ secrets.APP_URL }}"
+          BASE_URL="${BASE_URL%/}"
+          
+          FULL_URL="${BASE_URL}/api/cron/notifications"
+          echo "🚀 İstek atılan adres: $FULL_URL"
+          
+          # curl'ü verbose modda çalıştırıp yanıt kodunu ve gövdeyi al
+          RESPONSE_CODE=$(curl -s -o response.txt -w "%{http_code}" -X POST "$FULL_URL" \
             -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
             -H "Content-Type: application/json")
           
-          if [ "$RESPONSE" -eq 200 ]; then
-            echo "✅ Cron başarıyla tetiklendi (HTTP 200)"
+          echo "📥 Gelen HTTP Kodu: $RESPONSE_CODE"
+          echo "📄 Yanıt İçeriği:"
+          cat response.txt
+          echo ""
+          
+          # Başarılı kodları kontrol et (200, 201, 202 kabul edilebilir)
+          if [[ "$RESPONSE_CODE" =~ ^(200|201|202)$ ]]; then
+            echo "✅ Cron başarıyla tetiklendi!"
           else
-            echo "❌ Cron tetikleme başarısız! HTTP Kodu: $RESPONSE"
-            cat response.txt
+            echo "❌ Cron tetikleme başarısız! HTTP Kodu: $RESPONSE_CODE"
             exit 1
           fi
