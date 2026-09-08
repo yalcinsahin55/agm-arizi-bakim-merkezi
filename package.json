@@ -1,13 +1,13 @@
 {
   "name": "agm-arizi-bakim-merkezi",
-  "version": "2.4.0",
+  "version": "3.0.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
     "typecheck": "tsc --noEmit",
-    "lint": "next lint",
+    "lint": "eslint .",
     "seed": "tsx scripts/seed.ts",
     "vapid": "tsx scripts/generate-vapid.ts",
     "import:engines": "tsx scripts/import-existing-engines.ts",
@@ -28,6 +28,9 @@
     "zod": "^4.0.0"
   },
   "devDependencies": {
+    "eslint": "^9.0.0",
+    "eslint-config-next": "^16.3.3",
+    "prettier": "^3.5.3",
     "tsx": "^4.19.4",
     "typescript": "^5.8.3"
   }

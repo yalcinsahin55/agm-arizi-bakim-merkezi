@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
+import { rateLimit, rateLimitResponse } from '@/lib/security';
 import { getCurrentUser } from '@/lib/auth';
 
 export async function GET() {

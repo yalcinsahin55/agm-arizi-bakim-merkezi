@@ -4,6 +4,8 @@ import {db} from '@/lib/db';
 import {getCurrentUser,can} from '@/lib/auth';
 import {notifyManagers} from '@/lib/notify';
 import {z} from 'zod';
+import { rateLimit, rateLimitResponse } from '@/lib/security';
+import { diffFields, writeAudit } from '@/lib/audit';
 
 const schema=z.object({
   motorId:z.string().min(1), categoryId:z.string().min(1),
@@ -14,12 +16,13 @@ const schema=z.object({
 
 export async function GET(){
  const u=await getCurrentUser(); if(!u)return NextResponse.json({error:'Giriş gerekli'},{status:401});
- const d=await db(); const q=(u.role==='yonetici'||u.role==='goruntuleyici')?{}:u.role==='teknisyen'?{assignedTechnicianId:u._id}:{createdBy:u._id};
+ const d=await db(); const q={archived:{$ne:true},...(u.role==='yonetici'||u.role==='goruntuleyici'?{}:u.role==='teknisyen'?{assignedTechnicianId:u._id}:{createdBy:u._id})};
  const rows=await d.collection('breakdowns').find(q).sort({createdAt:-1}).limit(500).toArray(); return NextResponse.json(rows);
 }
 
 export async function POST(req:Request){
  const u=await getCurrentUser(); if(!u||!can(u.role,'breakdown:create'))return NextResponse.json({error:'Yetkisiz'},{status:403});
+ const rl=await rateLimit(req,'breakdown:create',u,20); if(!rl.ok)return rateLimitResponse(rl.retryAfter);
  let raw:any; try{raw=await req.json()}catch{return NextResponse.json({error:'Geçersiz istek gövdesi'},{status:400})} const parsed=schema.safeParse(raw); if(!parsed.success)return NextResponse.json({error:'Geçersiz veri'},{status:400});
  const d=await db(), id=new ObjectId(), now=new Date();
  let motor:any, category:any, subcategory:any=null;
@@ -38,12 +41,13 @@ export async function POST(req:Request){
 }
 
 export async function PATCH(req:Request){
- const u=await getCurrentUser(); if(!u)return NextResponse.json({error:'Giriş gerekli'},{status:401}); const body=await req.json(); let id:ObjectId;
+ const u=await getCurrentUser(); if(!u)return NextResponse.json({error:'Giriş gerekli'},{status:401}); const body=await req.json();
+ const rl=await rateLimit(req,'breakdown:edit',u,30); if(!rl.ok)return rateLimitResponse(rl.retryAfter); let id:ObjectId;
  try{id=new ObjectId(String(body.id))}catch{return NextResponse.json({error:'Geçersiz arıza kimliği'},{status:400})}
  const d=await db(),b=await d.collection('breakdowns').findOne({_id:id}); if(!b)return NextResponse.json({error:'Arıza bulunamadı'},{status:404});
  if(u.role!=='yonetici'&&(u.role!=='operator'||String(b.createdBy)!==u._id||b.status!=='acik'))return NextResponse.json({error:'Bu kayıt artık değiştirilemez'},{status:403});
  const p=schema.partial().safeParse(body); if(!p.success)return NextResponse.json({error:'Geçersiz veri'},{status:400});
- const set:any={...p.data,updatedAt:new Date()};
+ const set:Record<string,unknown>={...p.data,updatedAt:new Date()};
  if(p.data.downtimeStartedAt)set.downtimeStartedAt=new Date(p.data.downtimeStartedAt);
  if(p.data.motorId||p.data.categoryId||p.data.subcategoryId!==undefined){
    let motor:any=null,category:any=null,subcategory:any=null;
@@ -62,8 +66,9 @@ export async function PATCH(req:Request){
    if(motor){set.motorName=motor.name;set.motorId=String(motor._id);}
    if(category){set.categoryName=category.name;set.categoryId=String(category._id);}
  }
+ const fieldChanges=diffFields(b,set,['motorId','motorName','categoryId','categoryName','subcategoryId','subcategoryName','priority','title','description','motorHours','downtimeStartedAt']);
  await d.collection('breakdowns').updateOne({_id:id},{$set:set});
- await d.collection('breakdown_events').insertOne({breakdownId:id,eventId:`edited:${id}:${Date.now()}`,type:'edited',actorId:u._id,actorName:u.name,note:u.role==='yonetici'?'Yönetici tarafından düzenlendi':'Arıza bildirimi düzenlendi',createdAt:new Date()});
+ await writeAudit(d,{breakdownId:id,eventId:`edited:${id}:${Date.now()}`,type:'edited',actorId:u._id,actorName:u.name,note:u.role==='yonetici'?'Yönetici tarafından düzenlendi':'Arıza bildirimi düzenlendi',fieldChanges});
  return NextResponse.json({ok:true});
 }
 
@@ -71,8 +76,18 @@ export async function DELETE(req:Request){
  const u=await getCurrentUser(); if(!u)return NextResponse.json({error:'Giriş gerekli'},{status:401}); const {id}=await req.json(); let oid:ObjectId;
  try{oid=new ObjectId(String(id))}catch{return NextResponse.json({error:'Geçersiz arıza kimliği'},{status:400})}
  const d=await db(),b=await d.collection('breakdowns').findOne({_id:oid}); if(!b)return NextResponse.json({error:'Arıza bulunamadı'},{status:404});
- if(u.role==='yonetici'){if(['onaylandi','iptal'].includes(String(b.status)))return NextResponse.json({error:'Kapanmış veya iptal edilmiş kayıt tekrar iptal edilemez'},{status:409});}else if(!(u.role==='operator'&&String(b.createdBy)===u._id&&b.status==='acik'))return NextResponse.json({error:'Bu kayıt silinemez'},{status:403});
- await d.collection('breakdowns').updateOne({_id:oid},{$set:{status:'iptal',cancelledAt:new Date(),cancelledBy:u._id,updatedAt:new Date()}});
- await d.collection('breakdown_events').insertOne({breakdownId:oid,eventId:`cancelled:${oid}:${Date.now()}`,type:'cancelled',actorId:u._id,actorName:u.name,createdAt:new Date()});
+ if(u.role==='yonetici'){
+   const rl=await rateLimit(req,'breakdown:archive',u,20); if(!rl.ok)return rateLimitResponse(rl.retryAfter);
+   if(b.archived)return NextResponse.json({ok:true,already:true});
+   const now=new Date();
+   await d.collection('breakdowns').updateOne({_id:oid},{$set:{archived:true,archivedAt:now,archivedBy:u._id,updatedAt:now}});
+   const fieldChanges=diffFields(b,{...b,archived:true,archivedAt:now,archivedBy:u._id},['archived']);
+   await writeAudit(d,{breakdownId:oid,eventId:`archived:${oid}:${Date.now()}`,type:'archived',actorId:u._id,actorName:u.name,note:'Yönetici tarafından arşivlendi',fieldChanges});
+   return NextResponse.json({ok:true,archived:true});
+ }
+ const rl=await rateLimit(req,'breakdown:cancel',u,20); if(!rl.ok)return rateLimitResponse(rl.retryAfter);
+ if(!(u.role==='operator'&&String(b.createdBy)===u._id&&b.status==='acik'))return NextResponse.json({error:'Bu kayıt silinemez'},{status:403});
+ const now=new Date(); await d.collection('breakdowns').updateOne({_id:oid},{$set:{status:'iptal',cancelledAt:now,cancelledBy:u._id,updatedAt:now}});
+ await writeAudit(d,{breakdownId:oid,eventId:`cancelled:${oid}:${Date.now()}`,type:'cancelled',actorId:u._id,actorName:u.name,fieldChanges:{status:{from:b.status,to:'iptal'}},createdAt:now});
  return NextResponse.json({ok:true});
 }

@@ -15,6 +15,7 @@ export async function GET(req:Request){
   if(from||to) q.createdAt={...(from?{$gte:from}:{}),...(to?{$lte:to}:{})};
   for(const [key,param] of [['motorId','motor'],['categoryId','category'],['assignedTechnicianId','technician'],['status','status'],['priority','priority']] as const){const v=p.get(param);if(v)q[key]=v;}
   const d=await db();
+  q.archived={$ne:true};
   const rows=await d.collection('breakdowns').find(q).sort({createdAt:-1}).limit(5000).toArray();
   const minutes=(a:any,b:any)=>a&&b?Math.max(0,Math.round((new Date(b).getTime()-new Date(a).getTime())/60000)):null;
   const mttrValues=rows.map(x=>minutes(x.startedAt,x.closedAt)).filter((x):x is number=>x!==null);

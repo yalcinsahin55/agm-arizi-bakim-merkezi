@@ -22,8 +22,8 @@ export async function GET(req:Request){
  const byId=new Map<string,any>(breakdowns.map((x:any)=>[String(x._id),x]));
  if(p.get('format')==='csv') {
   const esc=(v:unknown)=>{const raw=String(v??'');const safe=/^[=+\-@]/.test(raw)?`'${raw}`:raw;return /[\",\n\r]/.test(safe)?`"${safe.replace(/"/g,'""')}"`:safe};
-  const header=['Tarih','İşlem','Arıza No','Motor','Kullanıcı','Not'];
-  const lines=[header,...rows.map((x:any)=>{const b=byId.get(String(x.breakdownId));return [x.createdAt instanceof Date?x.createdAt.toLocaleString('tr-TR'):x.createdAt,x.type,b?.code||'',b?.motorName||'',x.actorName||'',x.note||''].map(esc)})].map(r=>r.join(','));
+  const header=['Tarih','İşlem','Arıza No','Motor','Kullanıcı','Değişiklik','Not'];
+  const lines=[header,...rows.map((x:any)=>{const b=byId.get(String(x.breakdownId));return [x.createdAt instanceof Date?x.createdAt.toLocaleString('tr-TR'):x.createdAt,x.type,b?.code||'',b?.motorName||'',x.actorName||'',JSON.stringify(x.fieldChanges||{}),x.note||''].map(esc)})].map(r=>r.join(','));
   return new NextResponse('\uFEFF'+lines.join('\n'),{headers:{'Content-Type':'text/csv; charset=utf-8','Content-Disposition':'attachment; filename="denetim-gunlugu.csv"','Cache-Control':'no-store'}});
  }
  const events=rows.map((x:any)=>{const b=byId.get(String(x.breakdownId));return {...x,_id:String(x._id),breakdownId:String(x.breakdownId),breakdownCode:b?.code||'',motorName:b?.motorName||''};});

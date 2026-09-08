@@ -82,3 +82,11 @@ v2.3 ile teknisyenin işi kabul etmeden önce bildirimi gördüğünü onaylamas
 - Demo kullanıcıları artık `randomUUID()` string `_id` ile oluşturulur; oturum sorguları ile kullanıcı kimliği tipi tutarlıdır.
 - `import:engines` hem eski `engines/oil/maintTypes` export formatını hem de `data/agm-motors.json` içindeki `motors[]` snapshot formatını destekler.
 - Next.js 16 için root `proxy.ts` eklendi; sayfa seviyesinde oturum ve rol yönlendirmesi yapılır. API route'ları ayrıca veritabanı tabanlı yetki kontrolünü sürdürür.
+
+## v3.0.0 — güvenlik ve denetim sertleştirmesi
+- Login dışındaki mutasyon endpoint'lerine MongoDB tabanlı kullanıcı/IP rate limiting eklendi.
+- Breakdown audit olaylarına `fieldChanges` ile eski/yeni değer diff'i eklendi.
+- Yönetici için fiziksel silme yerine geri izlenebilir breakdown arşivleme eklendi.
+- Arşivli kayıtlar varsayılan listelerden çıkarıldı ve operasyonları kilitlendi.
+- Temel domain tipleri (`Breakdown`, `BreakdownEvent`, `Notification`, `Motor`, `Category`, `Attachment`) genişletildi.
+- ESLint 9 + `eslint-config-next` ve Prettier yapılandırması eklendi.
