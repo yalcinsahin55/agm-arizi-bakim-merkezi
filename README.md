@@ -90,3 +90,8 @@ v2.3 ile teknisyenin işi kabul etmeden önce bildirimi gördüğünü onaylamas
 - Arşivli kayıtlar varsayılan listelerden çıkarıldı ve operasyonları kilitlendi.
 - Temel domain tipleri (`Breakdown`, `BreakdownEvent`, `Notification`, `Motor`, `Category`, `Attachment`) genişletildi.
 - ESLint 9 + `eslint-config-next` ve Prettier yapılandırması eklendi.
+
+## v4.1 — arşiv filtre düzeltmesi, öngörü raporları, çevrimdışı arıza bildirimi
+- `archived: true` filtresi ana sayfa, arıza listesi, teknisyen kuyruğu ve motor sayfalarına da uygulandı (önceden yalnızca API'de uygulanıyordu, arşivlenmiş kayıtlar bu sayfalarda görünmeye devam ediyordu).
+- Gelişmiş raporlar sayfasına, API'de zaten hesaplanan ama arayüzde gösterilmeyen "Tekrarlayan Kök Nedenler" ve "Motor Risk / Öngörü Görünümü" (son 90 gün arıza sıklığı, ort. saat/arıza, risk etiketi) bölümleri eklendi.
+- Çevrimdışı arıza bildirimi: `/arizalar/yeni` formunda ağ hatası oluşursa kayıt tarayıcıda IndexedDB'ye alınır ve Background Sync ile (desteklemeyen tarayıcılarda `online` olayı ile) bağlantı gelince otomatik gönderilir. Kullanıcıya bekleyen kayıt sayısı gösterilir.
