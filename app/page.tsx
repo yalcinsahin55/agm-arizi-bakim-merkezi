@@ -12,7 +12,7 @@ export default async function Home() {
     if (!u)
         return <div className="login"><div className="card"><h1 className="page-title">AGM Arızi Bakım Merkezi</h1><p className="muted">Arıza yönetimi ve teknisyen müdahale merkezi</p><Link className="btn primary" href="/giris">Giriş yap</Link></div></div>;
     const d = await db(), b = d.collection('breakdowns');
-    const q = u.role === 'yonetici' || u.role === 'goruntuleyici' ? {} : u.role === 'teknisyen' ? { assignedTechnicianId: u._id } : { createdBy: u._id };
+    const q = { archived: { $ne: true }, ...(u.role === 'yonetici' || u.role === 'goruntuleyici' ? {} : u.role === 'teknisyen' ? { assignedTechnicianId: u._id } : { createdBy: u._id }) };
     const active = { ...q, status: { $in: activeStatuses } };
     const [all, open, critical, approval, closed, recent, technicians, notSeen] = await Promise.all([b.find(q).sort({ createdAt: -1 }).limit(1000).toArray(), b.countDocuments(active), b.countDocuments({ ...active, priority: 'kritik' }), b.countDocuments({ ...q, status: 'onay_bekliyor' }), b.countDocuments({ ...q, status: 'onaylandi' }), b.find(q).sort({ createdAt: -1 }).limit(8).toArray(), u.role === 'yonetici' ? d.collection('users').find({ role: 'teknisyen', active: true }).toArray() : Promise.resolve([]), u.role === 'yonetici' ? b.countDocuments({ ...q, status: 'atandi', seenAt: { $exists: false } }) : Promise.resolve(0)]);
     const techWork = u.role === 'yonetici' ? await Promise.all(technicians.map(async (t: any) => ({ name: t.name, count: await b.countDocuments({ assignedTechnicianId: String(t._id), status: { $in: ['atandi', 'devam_ediyor', 'revizyon'] } }), started: await b.countDocuments({ assignedTechnicianId: String(t._id), status: 'devam_ediyor' }) }))) : [];

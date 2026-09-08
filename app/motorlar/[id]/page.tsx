@@ -16,7 +16,7 @@ export default async function MotorDetail({ params }: {
     const motor = await d.collection('motors').findOne({ _id: id, active: true });
     if (!motor)
         return <><Link className="btn" href="/motorlar">← Motorlar</Link><div className="card" style={{ marginTop: 16 }}>Motor bulunamadı.</div></>;
-    const rows = await d.collection('breakdowns').find({ motorId: id }).sort({ createdAt: -1 }).limit(500).toArray();
+    const rows = await d.collection('breakdowns').find({ motorId: id, archived: { $ne: true } }).sort({ createdAt: -1 }).limit(500).toArray();
     const mttr = rows.map(x => x.startedAt && x.closedAt ? Math.max(0, Math.round((new Date(x.closedAt).getTime() - new Date(x.startedAt).getTime()) / 60000)) : null).filter((x): x is number => x !== null);
     const categories = [...rows.reduce((m, x) => { const k = String(x.categoryName || 'Tanımsız'); m.set(k, (m.get(k) || 0) + 1); return m; }, new Map<string, number>())].sort((a, b) => b[1] - a[1]);
     return <><div className="row"><Link className="btn" href="/motorlar">← Motorlar</Link><Link className="btn" href={`/arizalar?motor=${encodeURIComponent(id)}`}>Arıza Kayıtları</Link></div><div className="dashboard-head" style={{ marginTop: 14 }}><div><div className="eyebrow">AGM • MOTOR KARNESİ</div><h1 className="page-title">{motor.name}</h1><p className="muted">Kaynak: {motor.source === 'agm-bakim-merkezi' ? 'Mevcut AGM sistemi' : 'Arızi Bakım Merkezi'} · Güncelleme: {motor.sourceUpdateDate || '—'}</p></div><span className="badge">{motor.active ? 'Aktif' : 'Pasif'}</span></div>
