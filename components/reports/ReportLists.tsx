@@ -1,2 +1,8 @@
-export default function ReportLists({report}:{report:any}){return <><div className="split" style={{marginTop:16}}><List title="Motor Bazlı" rows={report.byMotor}/><List title="Kategori Bazlı" rows={report.byCategory}/></div><div className="split" style={{marginTop:16}}><List title="Aylık Arıza Trendi" rows={report.monthly}/><List title="Öncelik Dağılımı" rows={report.priority}/></div><div className="card" style={{marginTop:16,overflowX:'auto'}}><h2>Teknisyen Bazlı</h2><table className="table"><thead><tr><th>Teknisyen</th><th>Arıza</th></tr></thead><tbody>{report.byTechnician.map((x:any)=><tr key={x.name}><td>{x.name}</td><td>{x.count}</td></tr>)}</tbody></table></div></>}
-function List({title,rows}:{title:string;rows:any[]}){return <div className="card"><h2>{title}</h2>{rows.slice(0,15).map((x:any)=><div className="row" style={{justifyContent:'space-between',padding:'8px 0',borderBottom:'1px solid var(--line)'}} key={x.name}><span>{x.name}</span><b>{x.count}</b></div>)}</div>}
+export default function ReportLists({ report }: {
+    report: any;
+}) { return <><div className="split" style={{ marginTop: 16 }}><List title="Motor Bazlı" rows={report.byMotor}/><List title="Kategori Bazlı" rows={report.byCategory}/></div><div className="split" style={{ marginTop: 16 }}><List title="Aylık Arıza Trendi" rows={report.monthly}/><List title="Öncelik Dağılımı" rows={report.priority}/></div><div className="card" style={{ marginTop: 16, overflowX: 'auto' }}><h2>Teknisyen Bazlı</h2><table className="table"><thead><tr><th>Teknisyen</th><th>Arıza</th></tr></thead><tbody>{report.byTechnician.map((x: any) => <tr key={x.name}><td>{x.name}</td><td>{x.count}</td></tr>)}</tbody></table></div></>; }
+function List({ title, rows }: {
+    title: string;
+    rows: any[];
+}) { return <div className="card"><h2>{title}</h2>{rows.slice(0, 15).map((x: any) => <div className="row" style={{ justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid var(--line)' }} key={x.name}><span>{x.name}</span><b>{x.count}</b></div>)}</div>; }
+

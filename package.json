@@ -1,6 +1,6 @@
 {
   "name": "agm-arizi-bakim-merkezi",
-  "version": "3.0.0",
+  "version": "4.0.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -11,7 +11,9 @@
     "seed": "tsx scripts/seed.ts",
     "vapid": "tsx scripts/generate-vapid.ts",
     "import:engines": "tsx scripts/import-existing-engines.ts",
-    "workflow:check": "node scripts/workflow-check.mjs"
+    "workflow:check": "node scripts/workflow-check.mjs",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
   },
   "dependencies": {
     "@vercel/blob": "^1.1.1",

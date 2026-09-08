@@ -1,1 +1,3 @@
-import webpush from 'web-push';console.log(webpush.generateVAPIDKeys())
+import webpush from 'web-push';
+console.log(webpush.generateVAPIDKeys());
+

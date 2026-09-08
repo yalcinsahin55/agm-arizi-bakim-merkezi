@@ -1,5 +1,40 @@
-import {getCurrentUser} from '@/lib/auth';import {db} from '@/lib/db';import {ObjectId} from 'mongodb';import Link from 'next/link';
-import BreakdownActions from '@/components/BreakdownActions';import BreakdownAttachments from '@/components/BreakdownAttachments';
-import BreakdownSummary from '@/components/breakdown/BreakdownSummary';import TechnicalReport from '@/components/breakdown/TechnicalReport';import ResponseTracking from '@/components/breakdown/ResponseTracking';import EventTimeline from '@/components/breakdown/EventTimeline';
-export default async function Detail({params}:{params:Promise<{id:string}>}){const u=await getCurrentUser();if(!u)return null;const {id}=await params;let oid:ObjectId;try{oid=new ObjectId(id)}catch{return <p>Geçersiz arıza kaydı.</p>}const d=await db(),b=await d.collection('breakdowns').findOne({_id:oid});if(!b)return <p>Arıza bulunamadı.</p>;if(u.role==='operator'&&String(b.createdBy)!==u._id)return <p>Bu kaydı görüntüleme yetkiniz yok.</p>;if(u.role==='teknisyen'&&String(b.assignedTechnicianId)!==u._id)return <p>Bu kaydı görüntüleme yetkiniz yok.</p>;
- const events=await d.collection('breakdown_events').find({breakdownId:b._id}).sort({createdAt:1}).toArray();const notifications=u.role==='yonetici'?await d.collection('notifications').find({breakdownId:String(b._id),recipientId:u._id}).sort({createdAt:1}).toArray():[];const canEdit=u.role==='operator'&&String(b.createdBy)===u._id&&b.status==='acik';const canAttach=u.role==='yonetici'||(u.role==='teknisyen'&&['atandi','devam_ediyor','revizyon'].includes(String(b.status)))||canEdit;return <><div className="row"><Link className="btn" href="/arizalar">← Geri</Link><span className="badge">{b.status}</span><span className={`badge priority-${b.priority}`}>{b.priority}</span></div><h1 className="page-title" style={{marginTop:14}}>{b.code} · {b.motorName}</h1><p className="muted">{b.categoryName}{b.subcategoryName?` / ${b.subcategoryName}`:''} · {b.title}</p><div className="split" style={{marginTop:16}}><BreakdownSummary breakdown={b}/><div className="card"><h2>İşlem</h2>{canEdit&&<Link className="btn" href={`/arizalar/${id}/duzenle`}>Arızayı Düzenle</Link>}<BreakdownActions breakdown={JSON.parse(JSON.stringify(b))} user={u}/></div></div><TechnicalReport breakdown={b}/>{u.role==='yonetici'&&<ResponseTracking breakdown={b} notifications={notifications}/>}<BreakdownAttachments id={id} canUpload={canAttach} canDelete={canAttach}/><EventTimeline events={events}/></>}
+import { getCurrentUser } from '@/lib/auth';
+import { db } from '@/lib/db';
+import { ObjectId } from 'mongodb';
+import Link from 'next/link';
+import BreakdownActions from '@/components/BreakdownActions';
+import BreakdownAttachments from '@/components/BreakdownAttachments';
+import BreakdownSummary from '@/components/breakdown/BreakdownSummary';
+import TechnicalReport from '@/components/breakdown/TechnicalReport';
+import ResponseTracking from '@/components/breakdown/ResponseTracking';
+import EventTimeline from '@/components/breakdown/EventTimeline';
+export default async function Detail({ params }: {
+    params: Promise<{
+        id: string;
+    }>;
+}) {
+    const u = await getCurrentUser();
+    if (!u)
+        return null;
+    const { id } = await params;
+    let oid: ObjectId;
+    try {
+        oid = new ObjectId(id);
+    }
+    catch {
+        return <p>Geçersiz arıza kaydı.</p>;
+    }
+    const d = await db(), b = await d.collection('breakdowns').findOne({ _id: oid });
+    if (!b)
+        return <p>Arıza bulunamadı.</p>;
+    if (u.role === 'operator' && String(b.createdBy) !== u._id)
+        return <p>Bu kaydı görüntüleme yetkiniz yok.</p>;
+    if (u.role === 'teknisyen' && String(b.assignedTechnicianId) !== u._id)
+        return <p>Bu kaydı görüntüleme yetkiniz yok.</p>;
+    const events = await d.collection('breakdown_events').find({ breakdownId: b._id }).sort({ createdAt: 1 }).toArray();
+    const notifications = u.role === 'yonetici' ? await d.collection('notifications').find({ breakdownId: String(b._id), recipientId: u._id }).sort({ createdAt: 1 }).toArray() : [];
+    const canEdit = u.role === 'operator' && String(b.createdBy) === u._id && b.status === 'acik';
+    const canAttach = u.role === 'yonetici' || (u.role === 'teknisyen' && ['atandi', 'devam_ediyor', 'revizyon'].includes(String(b.status))) || canEdit;
+    return <><div className="row"><Link className="btn" href="/arizalar">← Geri</Link><span className="badge">{b.status}</span><span className={`badge priority-${b.priority}`}>{b.priority}</span></div><h1 className="page-title" style={{ marginTop: 14 }}>{b.code} · {b.motorName}</h1><p className="muted">{b.categoryName}{b.subcategoryName ? ` / ${b.subcategoryName}` : ''} · {b.title}</p><div className="split" style={{ marginTop: 16 }}><BreakdownSummary breakdown={b}/><div className="card"><h2>İşlem</h2>{canEdit && <Link className="btn" href={`/arizalar/${id}/duzenle`}>Arızayı Düzenle</Link>}<BreakdownActions breakdown={JSON.parse(JSON.stringify(b))} user={u}/></div></div><TechnicalReport breakdown={b}/>{u.role === 'yonetici' && <ResponseTracking breakdown={b} notifications={notifications}/>}<BreakdownAttachments id={id} canUpload={canAttach} canDelete={canAttach}/><EventTimeline events={events}/></>;
+}
+

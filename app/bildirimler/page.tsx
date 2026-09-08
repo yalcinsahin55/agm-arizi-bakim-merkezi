@@ -1,1 +1,11 @@
-import {getCurrentUser} from '@/lib/auth';import {db} from '@/lib/db';import Link from 'next/link';export default async function Notifications(){const u=await getCurrentUser();if(!u)return null;const rows=await (await db()).collection('notifications').find({recipientId:u._id}).sort({createdAt:-1}).limit(100).toArray();return <><h1 className="page-title">Bildirim Merkezi</h1><p className="muted">Kalıcı bildirim geçmişi</p><div className="grid" style={{marginTop:16}}>{rows.map((n:any)=><Link className="card" href={n.href||'/'} key={String(n._id)}><div className="row" style={{justifyContent:'space-between'}}><b>{n.title}</b><span className="muted">{new Date(n.createdAt).toLocaleString('tr-TR')}</span></div><p>{n.body}</p><small className="muted">Push: {n.pushStatus||'kayıtlı'} · {n.seenAt?'Görüldü':'Görülmedi'}</small></Link>)}</div></>}
+import { getCurrentUser } from '@/lib/auth';
+import { db } from '@/lib/db';
+import Link from 'next/link';
+export default async function Notifications() {
+    const u = await getCurrentUser();
+    if (!u)
+        return null;
+    const rows = await (await db()).collection('notifications').find({ recipientId: u._id }).sort({ createdAt: -1 }).limit(100).toArray();
+    return <><h1 className="page-title">Bildirim Merkezi</h1><p className="muted">Kalıcı bildirim geçmişi</p><div className="grid" style={{ marginTop: 16 }}>{rows.map((n: any) => <Link className="card" href={n.href || '/'} key={String(n._id)}><div className="row" style={{ justifyContent: 'space-between' }}><b>{n.title}</b><span className="muted">{new Date(n.createdAt).toLocaleString('tr-TR')}</span></div><p>{n.body}</p><small className="muted">Push: {n.pushStatus || 'kayıtlı'} · {n.seenAt ? 'Görüldü' : 'Görülmedi'}</small></Link>)}</div></>;
+}
+
