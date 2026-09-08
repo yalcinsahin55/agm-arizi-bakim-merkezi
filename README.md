@@ -36,7 +36,7 @@ Mevcut AGM planlı bakım uygulamasından tamamen bağımsız, arıza/breakdown 
 
 ## Vercel
 Cron endpoint: `/api/cron/notifications`
-`CRON_SECRET` ile korunur ve `vercel.json` üzerinden 5 dakikada bir çalışır.
+`CRON_SECRET` ile korunur. `vercel.json` içindeki Vercel Cron, Hobby planın günlük sınırı nedeniyle günde 1 kez (`0 3 * * *`) çalışacak şekilde ayarlanmıştır. Bildirim tekrar deneme/eskalasyonun gerçek zamanlıya yakın (ör. 5 dakikada bir) çalışması için ücretsiz bir dış cron servisi (ör. cron-job.org) kullanılıp aynı endpoint `Authorization: Bearer <CRON_SECRET>` header'ıyla çağrılmalıdır. Pro plana geçilirse `vercel.json`'daki schedule `*/5 * * * *` olarak geri değiştirilebilir.
 
 ## Önemli mimari kural
 Bu proje mevcut `agm-bakim-nextjs` uygulamasının MongoDB'sine, GitHub reposuna veya Vercel projesine bağlanmamalıdır. İlk kurulum tamamen ayrı kaynaklarla yapılmalıdır.
