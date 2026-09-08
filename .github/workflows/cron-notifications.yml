@@ -1,0 +1,28 @@
+name: Trigger Notification Retry Cron
+
+on:
+  schedule:
+    # Her 5 dakikada bir çalışır (UTC saatine göre)
+    - cron: '*/5 * * * *'
+  
+  # İstersen GitHub arayüzünden manuel olarak da tetikleyebilirsin
+  workflow_dispatch: 
+
+jobs:
+  trigger-cron:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call Cron Endpoint
+        run: |
+          echo "Cron tetikleniyor: ${{ secrets.APP_URL }}/api/cron/notifications"
+          RESPONSE=$(curl -s -o response.txt -w "%{http_code}" -X POST "${{ secrets.APP_URL }}/api/cron/notifications" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            -H "Content-Type: application/json")
+          
+          if [ "$RESPONSE" -eq 200 ]; then
+            echo "✅ Cron başarıyla tetiklendi (HTTP 200)"
+          else
+            echo "❌ Cron tetikleme başarısız! HTTP Kodu: $RESPONSE"
+            cat response.txt
+            exit 1
+          fi
