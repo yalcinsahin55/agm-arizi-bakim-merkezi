@@ -22,15 +22,17 @@ Mevcut AGM planlı bakım uygulamasından tamamen bağımsız, arıza/breakdown 
 - `teknisyen@agm.local` — Teknisyen
 - `operator@agm.local` — Operatör
 - `ceo@agm.local` — Üst Düzey / Görüntüleyici
-- Demo şifre: `ChangeMe123!`
+- Varsayılan geliştirme/demo şifresi: `ChangeMe123!`
+- Canlı/production seed sırasında `SEED_DEMO_PASSWORD` environment variable'ı ile güçlü bir ilk şifre belirleyin; bu değer GitHub'a yazılmaz.
 
 ## Kurulum
 1. Yeni MongoDB veritabanı oluşturun.
 2. `.env.example` değerlerini `.env.local` içine kopyalayın.
 3. `MONGODB_URI`, `MONGODB_DB`, `JWT_SECRET` ve Web Push için VAPID değerlerini girin.
-4. `npm install`
-5. `npm run seed`
-6. `npm run dev`
+4. Production seed çalıştıracaksanız `SEED_DEMO_PASSWORD` da tanımlayın.
+5. `npm install`
+6. `npm run seed`
+7. `npm run dev`
 
 ## Vercel
 Cron endpoint: `/api/cron/notifications`
@@ -75,3 +77,8 @@ v2.3 ile teknisyenin işi kabul etmeden önce bildirimi gördüğünü onaylamas
 - Bildirim kaydı veritabanına yazıldıktan sonra push gönderimi başarısız olsa bile arıza işlemi başarısız sayılmaz; push daha sonra retry cron'u ile denenir.
 - Teknisyen ataması yarış durumunda atomik durum kontrolü ile korunur.
 - Yönetici revizyon notu arayüzde zorunlu alan olarak tutulur.
+
+## v2.4 düzeltmeleri
+- Demo kullanıcıları artık `randomUUID()` string `_id` ile oluşturulur; oturum sorguları ile kullanıcı kimliği tipi tutarlıdır.
+- `import:engines` hem eski `engines/oil/maintTypes` export formatını hem de `data/agm-motors.json` içindeki `motors[]` snapshot formatını destekler.
+- Next.js 16 için root `proxy.ts` eklendi; sayfa seviyesinde oturum ve rol yönlendirmesi yapılır. API route'ları ayrıca veritabanı tabanlı yetki kontrolünü sürdürür.
