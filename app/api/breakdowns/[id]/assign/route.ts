@@ -3,6 +3,7 @@ import { ObjectId } from 'mongodb';
 import { db } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
 import { createNotification } from '@/lib/notify';
+import { queueWhatsappMessage } from '@/lib/whatsapp-outbox';
 import { rateLimit, rateLimitResponse } from '@/lib/security';
 import { diffFields, writeAudit } from '@/lib/audit';
 export async function POST(req: Request, { params }: {
@@ -56,6 +57,9 @@ export async function POST(req: Request, { params }: {
     if (oldTech && oldTech !== technicianId) {
         await createNotification({ recipientId: oldTech, breakdownId: id, eventId: `${ev}:old`, title: 'Arıza başka teknisyene aktarıldı', body: `${b.code} artık ${tech.name} teknisyenine atandı.`, href: `/arizalar/${id}` });
     }
+    const waPhone = String(tech.phoneNumber || '');
+    if (waPhone && tech.whatsappEnabled !== false) {
+        await queueWhatsappMessage(waPhone, `🔧 GÖREV ATANDI ${b.code} | Motor: ${b.motorName} | ${b.categoryName} | Öncelik: ${b.priority} | Panel: /arizalar/${id}`, 'breakdown_assigned');
+    }
     return NextResponse.json({ ok: true });
 }
-
