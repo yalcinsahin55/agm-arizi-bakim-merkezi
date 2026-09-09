@@ -37,7 +37,7 @@ export async function POST(req: Request) {
         lock.failures >= MAX_FAILURES) {
         return NextResponse.json({ error: 'Çok fazla başarısız giriş denemesi. Lütfen 15 dakika sonra tekrar deneyin.' }, { status: 429 });
     }
-    const query = phone ? { phoneNumber: phone, active: true } : { email: identifier, active: true };
+        const query = phone ? { $or: [{ phoneNumber: phone }, { phoneNumber: Number(phone) }], active: true } : { email: identifier, active: true };
     const user = await database.collection('users').findOne(query);
     const valid = Boolean(user) && (await bcrypt.compare(password, user!.passwordHash));
     if (!valid) {
