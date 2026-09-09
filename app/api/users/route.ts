@@ -6,10 +6,11 @@ import { db } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
 import { createNotification } from '@/lib/notify';
 import { rateLimit, rateLimitResponse } from '@/lib/security';
+import { normalizePhone } from '@/lib/phone';
 const roles = ['yonetici', 'teknisyen', 'operator', 'goruntuleyici'] as const;
 const schema = z.object({
     name: z.string().min(2).max(100),
-    email: z.string().email(),
+    phone: z.string().min(10).max(20),
     password: z.string().min(8).max(128),
     role: z.enum(roles),
 });
@@ -19,6 +20,7 @@ type UserPatchBody = {
     role?: unknown;
     active?: unknown;
     password?: unknown;
+    phone?: unknown;
 };
 export async function GET() {
     const user = await getCurrentUser();
@@ -45,15 +47,20 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: 'Geçersiz kullanıcı bilgileri' }, { status: 400 });
     }
     const value = parsed.data;
+    const phone = normalizePhone(value.phone);
+    if (!phone) {
+        return NextResponse.json({ error: 'Geçersiz telefon numarası (örn: 0535 027 88 55)' }, { status: 400 });
+    }
     const database = await db();
-    const email = value.email.toLowerCase();
-    if (await database.collection('users').findOne({ email })) {
-        return NextResponse.json({ error: 'Bu e-posta zaten kayıtlı' }, { status: 409 });
+    if (await database.collection('users').findOne({ phoneNumber: phone })) {
+        return NextResponse.json({ error: 'Bu telefon numarası zaten kayıtlı' }, { status: 409 });
     }
     const item = {
         _id: randomUUID(),
         name: value.name.trim(),
-        email,
+        email: `${phone}@tel.agm`,
+        phoneNumber: phone,
+        whatsappEnabled: true,
         role: value.role,
         passwordHash: await bcrypt.hash(value.password, 12),
         active: true,
@@ -65,7 +72,7 @@ export async function POST(req: Request) {
         user: {
             _id: item._id,
             name: item.name,
-            email: item.email,
+            phoneNumber: item.phoneNumber,
             role: item.role,
             active: true,
         },
@@ -103,6 +110,16 @@ export async function PATCH(req: Request) {
         set.active = body.active;
     if (typeof body.password === 'string' && body.password.length >= 8) {
         set.passwordHash = await bcrypt.hash(body.password, 12);
+    }
+    if (typeof body.phone === 'string' && body.phone.trim()) {
+        const np = normalizePhone(body.phone);
+        if (!np)
+            return NextResponse.json({ error: 'Geçersiz telefon numarası (örn: 0535 027 88 55)' }, { status: 400 });
+        const dup = await database.collection('users').findOne({ phoneNumber: np, _id: { $ne: targetId } });
+        if (dup)
+            return NextResponse.json({ error: 'Bu telefon numarası başka bir kullanıcıda kayıtlı' }, { status: 409 });
+        set.phoneNumber = np;
+        set.email = `${np}@tel.agm`;
     }
     const removingTechnician = target.role === 'teknisyen' &&
         (set.active === false || (typeof set.role === 'string' && set.role !== 'teknisyen'));
@@ -166,4 +183,3 @@ export async function PATCH(req: Request) {
         return NextResponse.json({ error: 'Kullanıcı bulunamadı' }, { status: 404 });
     return NextResponse.json({ ok: true });
 }
-
