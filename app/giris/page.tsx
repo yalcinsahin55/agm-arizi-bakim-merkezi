@@ -8,8 +8,10 @@ export default function Login() {
         e.preventDefault();
         setError('');
         const x = await fetch('/api/auth/login', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email, password }) });
-        if (x.ok)
-            r.push('/');
+        if (x.ok) {
+            const next = new URLSearchParams(window.location.search).get('next') || '/';
+            r.push(next);
+        }
         else
             setError((await x.json()).error || 'Giriş başarısız');
     }
