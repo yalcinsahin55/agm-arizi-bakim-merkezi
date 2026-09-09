@@ -3,6 +3,10 @@ import Link from 'next/link';
 import { getCurrentUser } from '@/lib/auth';
 import NotificationPulse from '@/components/NotificationPulse';
 import LogoutButton from '@/components/LogoutButton';
+export const metadata = {
+    title: 'Avcıkoru Santrali Arızi Bakım Merkezi',
+    description: 'Arıza yönetimi ve teknisyen müdahale merkezi',
+};
 export default async function Layout({ children }: {
     children: React.ReactNode;
 }) {
