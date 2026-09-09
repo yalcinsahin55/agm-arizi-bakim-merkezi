@@ -1,97 +1,81 @@
-# AGM Arızi Bakım Merkezi
+# AGM Arızi Bakım Merkezi — Avcıkoru Santrali
 
-Mevcut AGM planlı bakım uygulamasından tamamen bağımsız, arıza/breakdown yönetimi için Next.js + TypeScript + MongoDB tabanlı web uygulaması.
+Motor arıza/duruş kayıtlarının rol bazlı yönetimi, teknisyen atama ve onay akışı,
+WhatsApp bildirimleri ve raporlama içeren uçtan uca bakım operasyon sistemi.
 
-## v0.6 kapsamında
-- Yönetici / Teknisyen / Operatör / Üst Düzey Görüntüleyici rolleri
-- Arıza yaşam döngüsü: Açık → Atandı → Devam Ediyor → Onay Bekliyor → Onaylandı veya Revizyon
-- Teknisyen bildirim zinciri: bildirimi gördü → işe başladı → rapor gönderdi
-- Kalıcı MongoDB bildirim kayıtları + Web Push + 5 dakikalık Vercel Cron retry
-- Yönetici arıza detayında teknisyen yanıt/müdahale durumlarının ayrı takibi
-- Profesyonel yönetici/teknisyen/görüntüleyici dashboard görünümü
-- Teknisyen iş yükü görünümü
-- Motor saati, duruş başlangıcı, müdahale başlangıcı, çözüm süresi
-- Teknik rapor, kök neden, düzeltici faaliyet, parça ve malzeme kayıtları
-- Yönetici tarafından ana kategori + alt kategori yönetimi
-- Üst düzey kullanıcı için salt-okunur arıza ve rapor erişimi
-- Server-side motor/kategori/alt kategori doğrulaması
-- Kategori seed kayıtları MongoDB ObjectId standardına alındı
+## 🚀 Özellikler
 
-## Demo kullanıcılar
-- `admin@agm.local` — Yönetici
-- `teknisyen@agm.local` — Teknisyen
-- `operator@agm.local` — Operatör
-- `ceo@agm.local` — Üst Düzey / Görüntüleyici
-- Varsayılan geliştirme/demo şifresi: `ChangeMe123!`
-- Canlı/production seed sırasında `SEED_DEMO_PASSWORD` environment variable'ı ile güçlü bir ilk şifre belirleyin; bu değer GitHub'a yazılmaz.
+- **Rol bazlı yetki:** Yönetici, Teknisyen, Operatör, Üst Düzey Görüntüleyici
+- **Telefon kimliği:** Kullanıcı adı = telefon numarası (05xx… otomatik 905xx… normalize edilir).
+  Eski hesaplar e-posta ile girmeye devam edebilir.
+- **Arıza akışı:** acik → atandi → devam_ediyor → onay_bekliyor → onaylandi / revizyon
+- **WhatsApp bildirimleri:** 🚨 YENİ ARIZA (yöneticilere) · 🔧 GÖREV ATANDI (teknisyene) ·
+  mesajlarda iş emrine doğrudan giden 🔗 link
+- **Toaster bildirimler:** Uygulama içi sağ alt köşede canlı bildirim kartları (10 sn yoklama)
+- **Fotoğraf eki:** Vercel Blob depolama
+- **Raporlama:** KPI paneli (aktif/kritik/onay/MTTR), teknisyen iş yükü, gelişmiş raporlar
+- **Yönetim:** Kullanıcı ekleme/düzenleme/pasifleştirme/silme (güvenli teknisyen devri koruması),
+  kategoriler, motor envanteri, aktif oturumlar, denetim günlüğü
+- **Olay geçmişi:** Yalnızca yönetici rolüne görünür
 
-## Kurulum
-1. Yeni MongoDB veritabanı oluşturun.
-2. `.env.example` değerlerini `.env.local` içine kopyalayın.
-3. `MONGODB_URI`, `MONGODB_DB`, `JWT_SECRET` ve Web Push için VAPID değerlerini girin.
-4. Production seed çalıştıracaksanız `SEED_DEMO_PASSWORD` da tanımlayın.
-5. `npm install`
-6. `npm run seed`
-7. `npm run dev`
+## 🏗️ Mimari
 
-## Vercel
-Cron endpoint: `/api/cron/notifications`
-`CRON_SECRET` ile korunur. `vercel.json` içindeki Vercel Cron, Hobby planın günlük sınırı nedeniyle günde 1 kez (`0 3 * * *`) çalışacak şekilde ayarlanmıştır. Bildirim tekrar deneme/eskalasyonun gerçek zamanlıya yakın (ör. 5 dakikada bir) çalışması için ücretsiz bir dış cron servisi (ör. cron-job.org) kullanılıp aynı endpoint `Authorization: Bearer <CRON_SECRET>` header'ıyla çağrılmalıdır. Pro plana geçilirse `vercel.json`'daki schedule `*/5 * * * *` olarak geri değiştirilebilir.
+| Katman | Teknoloji |
+|---|---|
+| Web + API | Next.js (App Router) — Vercel |
+| Veritabanı | MongoDB Atlas |
+| Dosya depolama | Vercel Blob |
+| WhatsApp | WAHA (Docker, Ubuntu VM) + outbox worker (cron, dakikada 1) |
 
-## Önemli mimari kural
-Bu proje mevcut `agm-bakim-nextjs` uygulamasının MongoDB'sine, GitHub reposuna veya Vercel projesine bağlanmamalıdır. İlk kurulum tamamen ayrı kaynaklarla yapılmalıdır.
+### WhatsApp Outbox Akışı
+1. Web API'si bildirimi `whatsapp_outbox` koleksiyonuna yazar (`status: pending`).
+2. VM'deki **worker** her dakika `GET /api/whatsapp/outbox` ile kuyruğu çeker
+   (`X-Outbox-Secret` başlığı ile).
+3. Mesajları WAHA `POST /api/sendText` ile gönderir.
+4. Sonucu `POST /api/whatsapp/outbox/ack` ile `sent/failed` işaretler.
 
-## Test notu
-Kaynak kod üzerinde TypeScript/TSX sözdizimi taraması yapılmıştır. Bu çalışma ortamında `npm install` tamamlanamadığı için gerçek `next build` sonucu doğrulanmış değildir.
+> Bu tasarım sayesinde Vercel'de uzun koşan süreç gerekmez; gönderim VM'de olur,
+> WhatsApp oturumu (QR) VM'de yaşar.
 
+## 🔐 Ortam Değişkenleri
 
-## v1.0 Dosya Ekleri
-Arıza kayıtlarına JPG/PNG/WEBP fotoğraf ve PDF servis dokümanı eklenebilir. Dosyalar Vercel Blob'da, ek metadata ise MongoDB'de tutulur. Vercel projesinde `BLOB_READ_WRITE_TOKEN` environment variable tanımlanmalıdır. Maksimum dosya boyutu 6 MB'dır.
+### Vercel
+- `MONGODB_URI` — Atlas bağlantı dizesi
+- `SESSION_SECRET` — oturum imzalama anahtarı
+- `OUTBOX_SECRET` — worker ↔ API kuyruk anahtarı
+- `BLOB_READ_WRITE_TOKEN` — Vercel Blob (Storage sekmesinden otomatik eklenir)
 
-## AGM motor veri seti
+### VM (Ubuntu)
+- `~/waha/.env` → `WAHA_API_KEY`
+- `~/worker/outbox-worker.js` → `APP_URL`, `OUTBOX_SECRET`, `WAHA_SESSION`
 
-`data/agm-motors.json` mevcut AGM bakım sistemindeki 39 motorun son alınan çalışma saati ve yük değerlerini içerir. `npm run seed` bu motorları ilk kurulumda yeni veritabanına aktarır; mevcut motorların çalışma saatlerini tekrar seed çalıştırıldığında üzerine yazmaz. İsterseniz canlı sistemden yeni bir aktarım için `npm run import:engines -- /path/seed_data.json` komutu kullanılabilir.
+## 👥 Roller
 
-## Veri sınırı
-Bu proje arızi bakım için bağımsızdır. Planlı bakım sistemindeki turbo, intercooler, yağ, siloksan, vibrasyon damperi, alternatör ve benzeri kayıtları bu veritabanına kopyalamaz. Arızi raporda parça/işlem bilgisi yalnızca müdahalenin bağlamı olarak tutulur. İki sistem arasında yalnızca kullanıcı arayüzünden geçiş planlanır.
+| Rol | Yetkiler |
+|---|---|
+| Yönetici | Atama, onay/revizyon, kullanıcı & kategori yönetimi, olay geçmişi, arşiv |
+| Teknisyen | Atanan işi görme/başlatma, kök neden + teknik rapor + düzeltici faaliyet girme |
+| Operatör | Arıza kaydı açma/düzenleme (atama öncesi), kendi kayıtlarını izleme |
+| Görüntüleyici | Salt okunur panel ve raporlar |
 
+## 🛠️ Kurulum Özeti
 
-## v1.5 güvenlik ve iş akışı notları
-- Başarısız giriş denemeleri e-posta + istemci anahtarı bazında kısa süreli sınırlandırılır; MongoDB TTL ile deneme kayıtları temizlenir.
-- Teknisyen ataması yalnızca açık/atanmış/revizyon durumlarında yapılabilir; eski teknisyene aktarım bildirimi gönderilir.
-- Revizyon işlemi için açıklayıcı not zorunludur ve revizyon döngüsünde önceki müdahale zaman damgaları temizlenir.
-- Arızi sistem, planlı bakım sistemindeki turbo/intercooler/yağ/diğer parça yaşam döngüsü verilerini içermez. İki sistem ayrı MongoDB ve ayrı uygulama olarak kalır.
+1. **Vercel:** Repo'yu import et, env değişkenlerini tanımla, deploy et.
+2. **Atlas:** Koleksiyonlar ilk açılışta otomatik oluşturulur (indeksler `lib/db.ts`).
+3. **VM:** `docker compose up -d` ile WAHA; QR ile WhatsApp oturumu aç.
+4. **Worker:** `~/worker/outbox-worker.js` + crontab:
+   `* * * * * /usr/bin/node /home/ubuntu/worker/outbox-worker.js >> /home/ubuntu/worker/worker.log 2>&1`
+5. **Kullanıcılar:** Yönetici panelinden telefon numarasıyla kullanıcı tanımla.
 
+## 🩺 Sorun Giderme
 
-## v1.7
-- Technician actions use an atomic assignment guard to prevent a reassigned technician from changing the record.
-- Duplicate seen/accept/start actions are idempotent.
-- Added notification retry index for cron efficiency.
+| Belirti | Çözüm |
+|---|---|
+| `401 Unauthorized` (outbox) | `OUTBOX_SECRET` Vercel & worker'da aynı mı? Redeploy edildi mi? |
+| `DEPLOYMENT_NOT_FOUND` | Yanlış alan adı; Vercel'deki production URL'ini kullan |
+| WhatsApp gitmiyor | VM: `tail -f ~/worker/worker.log` · WAHA oturumu aktif mi? |
+| Giriş döngüsü | Adres çubuğunda eski `?next=` parametresi var mı? |
+| Fotoğraf hatası | `BLOB_READ_WRITE_TOKEN` tanımlı ve redeploy edildi mi? |
 
-
-## v2.3 güvenilirlik ve yetki sertleştirmeleri
-
-v2.3 ile teknisyenin işi kabul etmeden önce bildirimi gördüğünü onaylaması zorunlu hale getirildi; yönetici kendi hesabını kilitleyemez ve son aktif yöneticiyi pasifleştiremez; kategori/bildirim güncellemelerinde bulunamadı kontrolü eklendi; terminal arızaların tekrar iptal edilmesi engellendi.
-
-## v2.1 güvenilirlik notları
-- Bildirim kaydı veritabanına yazıldıktan sonra push gönderimi başarısız olsa bile arıza işlemi başarısız sayılmaz; push daha sonra retry cron'u ile denenir.
-- Teknisyen ataması yarış durumunda atomik durum kontrolü ile korunur.
-- Yönetici revizyon notu arayüzde zorunlu alan olarak tutulur.
-
-## v2.4 düzeltmeleri
-- Demo kullanıcıları artık `randomUUID()` string `_id` ile oluşturulur; oturum sorguları ile kullanıcı kimliği tipi tutarlıdır.
-- `import:engines` hem eski `engines/oil/maintTypes` export formatını hem de `data/agm-motors.json` içindeki `motors[]` snapshot formatını destekler.
-- Next.js 16 için root `proxy.ts` eklendi; sayfa seviyesinde oturum ve rol yönlendirmesi yapılır. API route'ları ayrıca veritabanı tabanlı yetki kontrolünü sürdürür.
-
-## v3.0.0 — güvenlik ve denetim sertleştirmesi
-- Login dışındaki mutasyon endpoint'lerine MongoDB tabanlı kullanıcı/IP rate limiting eklendi.
-- Breakdown audit olaylarına `fieldChanges` ile eski/yeni değer diff'i eklendi.
-- Yönetici için fiziksel silme yerine geri izlenebilir breakdown arşivleme eklendi.
-- Arşivli kayıtlar varsayılan listelerden çıkarıldı ve operasyonları kilitlendi.
-- Temel domain tipleri (`Breakdown`, `BreakdownEvent`, `Notification`, `Motor`, `Category`, `Attachment`) genişletildi.
-- ESLint 9 + `eslint-config-next` ve Prettier yapılandırması eklendi.
-
-## v4.2 — arşiv filtre düzeltmesi, öngörü raporları, çevrimdışı arıza bildirimi
-- `archived: true` filtresi ana sayfa, arıza listesi, teknisyen kuyruğu ve motor sayfalarına da uygulandı (önceden yalnızca API'de uygulanıyordu, arşivlenmiş kayıtlar bu sayfalarda görünmeye devam ediyordu).
-- Gelişmiş raporlar sayfasına, API'de zaten hesaplanan ama arayüzde gösterilmeyen "Tekrarlayan Kök Nedenler" ve "Motor Risk / Öngörü Görünümü" (son 90 gün arıza sıklığı, ort. saat/arıza, risk etiketi) bölümleri eklendi.
-- Çevrimdışı arıza bildirimi: `/arizalar/yeni` formunda ağ hatası oluşursa kayıt tarayıcıda IndexedDB'ye alınır ve Background Sync ile (desteklemeyen tarayıcılarda `online` olayı ile) bağlantı gelince otomatik gönderilir. Kullanıcıya bekleyen kayıt sayısı gösterilir.
+---
+**AGM · Arızi Bakım Merkezi — Breakdown Control**
