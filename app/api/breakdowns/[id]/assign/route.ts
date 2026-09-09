@@ -6,6 +6,7 @@ import { createNotification } from '@/lib/notify';
 import { queueWhatsappMessage } from '@/lib/whatsapp-outbox';
 import { rateLimit, rateLimitResponse } from '@/lib/security';
 import { diffFields, writeAudit } from '@/lib/audit';
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://agm-arizi-bakim-merkezi-zsru.vercel.app';
 export async function POST(req: Request, { params }: {
     params: Promise<{
         id: string;
@@ -59,7 +60,7 @@ export async function POST(req: Request, { params }: {
     }
     const waPhone = String(tech.phoneNumber || '');
     if (waPhone && tech.whatsappEnabled !== false) {
-        await queueWhatsappMessage(waPhone, `🔧 GÖREV ATANDI ${b.code} | Motor: ${b.motorName} | ${b.categoryName} | Öncelik: ${b.priority} | Panel: /arizalar/${id}`, 'breakdown_assigned');
+                await queueWhatsappMessage(waPhone, `🔧 GÖREV ATANDI ${b.code} | Motor: ${b.motorName} | ${b.categoryName} | Öncelik: ${b.priority}\n🔗 İş emri: ${APP_URL}/arizalar/${id}`, 'breakdown_assigned');
     }
     return NextResponse.json({ ok: true });
 }
