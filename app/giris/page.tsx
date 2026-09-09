@@ -1,16 +1,15 @@
 'use client';
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 export default function Login() {
     const [email, setEmail] = useState(''), [password, setPassword] = useState(''), [error, setError] = useState('');
-    const r = useRouter();
     async function submit(e: React.FormEvent) {
         e.preventDefault();
         setError('');
         const x = await fetch('/api/auth/login', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email, password }) });
         if (x.ok) {
-            const next = new URLSearchParams(window.location.search).get('next') || '/';
-            r.push(next);
+            const raw = new URLSearchParams(window.location.search).get('next') || '/';
+            const next = raw.startsWith('/') && !raw.startsWith('//') && !raw.startsWith('/giris') ? raw : '/';
+            window.location.assign(next);
         }
         else
             setError((await x.json()).error || 'Giriş başarısız');
