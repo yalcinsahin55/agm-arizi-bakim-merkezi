@@ -1,27 +1,36 @@
-import { Schema, model, models } from 'mongoose';
+import { ObjectId } from 'mongodb';
+import { db } from '@/lib/db';
 
 export type OutboxEvent = 'breakdown_created' | 'breakdown_assigned';
+export type OutboxStatus = 'pending' | 'processing' | 'sent' | 'failed';
 
-const WhatsappOutboxSchema = new Schema(
-  {
-    toPhone: { type: String, required: true },
-    message: { type: String, required: true },
-    event: { type: String, enum: ['breakdown_created', 'breakdown_assigned'], required: true },
-    status: { type: String, enum: ['pending', 'processing', 'sent', 'failed'], default: 'pending', index: true },
-    attempts: { type: Number, default: 0 },
-    nextAttemptAt: { type: Date, default: () => new Date() },
-    lastError: { type: String },
-  },
-  { timestamps: true }
-);
-
-export const WhatsappOutbox =
-  (models.WhatsappOutbox as any) || model('WhatsappOutbox', WhatsappOutboxSchema);
+export interface WhatsappOutboxDoc {
+  _id?: ObjectId;
+  toPhone: string;
+  message: string;
+  event: OutboxEvent;
+  status: OutboxStatus;
+  attempts: number;
+  nextAttemptAt: Date;
+  lastError?: string;
+  createdAt?: Date;
+  updatedAt?: Date;
+}
 
 /** Tetikleyicilerden çağrılır: mesajı kuyruğa yazar, asla burada göndermez. */
 export async function queueWhatsappMessage(toPhone: string, message: string, event: OutboxEvent) {
   try {
-    await WhatsappOutbox.create({ toPhone, message, event });
+    const d = await db();
+    await d.collection<WhatsappOutboxDoc>('whatsapp_outbox').insertOne({
+      toPhone,
+      message,
+      event,
+      status: 'pending',
+      attempts: 0,
+      nextAttemptAt: new Date(),
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
   } catch (e) {
     console.error('WhatsApp outbox yazma hatası:', e);
   }
