@@ -8,6 +8,8 @@ export interface User {
     email: string;
     role: Role;
     active: boolean;
+    phoneNumber?: string;
+    whatsappEnabled?: boolean;
 }
 export interface Motor {
     _id: string;
@@ -105,4 +107,3 @@ export interface Attachment {
     uploadedByName: string;
     createdAt: string;
 }
-
