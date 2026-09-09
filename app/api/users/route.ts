@@ -183,3 +183,81 @@ export async function PATCH(req: Request) {
         return NextResponse.json({ error: 'Kullanıcı bulunamadı' }, { status: 404 });
     return NextResponse.json({ ok: true });
 }
+export async function DELETE(req: Request) {
+    const user = await getCurrentUser();
+    if (!user || user.role !== 'yonetici') {
+        return NextResponse.json({ error: 'Yetkisiz' }, { status: 403 });
+    }
+    const limit = await rateLimit(req, 'user:write', user, 20);
+    if (!limit.ok)
+        return rateLimitResponse(limit.retryAfter);
+    const body = (await req.json().catch(() => ({}))) as { id?: unknown };
+    const targetId = String(body.id || '');
+    if (!targetId)
+        return NextResponse.json({ error: 'Kullanıcı gerekli' }, { status: 400 });
+    if (targetId === user._id) {
+        return NextResponse.json({ error: 'Kendi hesabınızı silemezsiniz' }, { status: 400 });
+    }
+    const database = await db();
+    const target = await database.collection('users').findOne({ _id: targetId });
+    if (!target)
+        return NextResponse.json({ error: 'Kullanıcı bulunamadı' }, { status: 404 });
+    if (target.role === 'yonetici' && target.active) {
+        const others = await database.collection('users').countDocuments({
+            _id: { $ne: targetId },
+            role: 'yonetici',
+            active: true,
+        });
+        if (others === 0) {
+            return NextResponse.json({ error: 'Sistemde en az bir aktif yönetici kalmalıdır' }, { status: 400 });
+        }
+    }
+    if (target.role === 'teknisyen') {
+        const openBreakdowns = await database
+            .collection('breakdowns')
+            .find({
+            assignedTechnicianId: targetId,
+            archived: { $ne: true },
+            status: { $in: ['atandi', 'devam_ediyor', 'revizyon', 'onay_bekliyor'] },
+        })
+            .toArray();
+        if (openBreakdowns.length) {
+            const replacement = await database
+                .collection('users')
+                .findOne({ role: 'teknisyen', active: true, _id: { $ne: targetId } });
+            if (!replacement) {
+                return NextResponse.json({
+                    error: `Teknisyenin ${openBreakdowns.length} açık arızası var. Devralacak aktif teknisyen bulunamadı.`,
+                }, { status: 409 });
+            }
+            for (const breakdown of openBreakdowns) {
+                await database.collection('breakdowns').updateOne({ _id: breakdown._id }, {
+                    $set: {
+                        assignedTechnicianId: String(replacement._id),
+                        assignedTechnicianName: String(replacement.name),
+                        status: 'atandi',
+                        assignedAt: new Date(),
+                        seenAt: null,
+                        acknowledgedAt: null,
+                        startedAt: null,
+                        escalationLevel: 0,
+                        updatedAt: new Date(),
+                    },
+                });
+                await createNotification({
+                    recipientId: String(replacement._id),
+                    breakdownId: String(breakdown._id),
+                    eventId: `technician-handover:${breakdown._id}:${Date.now()}`,
+                    title: 'Teknisyen devri: yeni arıza görevi',
+                    body: `${breakdown.code} • ${breakdown.motorName} • ${breakdown.categoryName}`,
+                    href: `/arizalar/${breakdown._id}`,
+                });
+            }
+        }
+    }
+    await database.collection('sessions').deleteMany({ userId: targetId });
+    await database.collection('push_subscriptions').deleteMany({ userId: targetId });
+    await database.collection('notifications').deleteMany({ recipientId: targetId });
+    await database.collection('users').deleteOne({ _id: targetId });
+    return NextResponse.json({ ok: true });
+}
