@@ -14,7 +14,7 @@ export default function LogoutButton() {
     try {
       await fetch('/api/auth/logout', { method: 'POST' });
     } catch {}
-    window.location.href = '/';
+    window.location.href = '/giris';
   }
 
   return (
