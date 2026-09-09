@@ -3,6 +3,7 @@ import { ObjectId } from 'mongodb';
 import { db } from '@/lib/db';
 import { getCurrentUser, can } from '@/lib/auth';
 import { notifyManagers } from '@/lib/notify';
+import { queueWhatsappMessage } from '@/lib/whatsapp-outbox';
 import { z } from 'zod';
 import { rateLimit, rateLimitResponse } from '@/lib/security';
 import { diffFields, writeAudit } from '@/lib/audit';
@@ -75,6 +76,10 @@ export async function POST(req: Request) {
     await d.collection('breakdowns').insertOne(item);
     await d.collection('breakdown_events').insertOne({ breakdownId: id, eventId: `created:${id}`, type: 'created', actorId: u._id, actorName: u.name, createdAt: now });
     await notifyManagers(item, `created:${id}`, 'created');
+    const waAdmins = await d.collection('users').find({ role: 'yonetici', active: true, whatsappEnabled: { $ne: false }, phoneNumber: { $exists: true, $ne: '' } }).toArray();
+    for (const a of waAdmins) {
+        await queueWhatsappMessage(String(a.phoneNumber), `🚨 YENİ ARIZA ${item.code} | Motor: ${item.motorName} | ${item.categoryName} | Açan: ${u.name} | Öncelik: ${item.priority}`, 'breakdown_created');
+    }
     return NextResponse.json(item, { status: 201 });
 }
 export async function PATCH(req: Request) {
@@ -148,7 +153,7 @@ export async function PATCH(req: Request) {
             set.categoryId = String(category._id);
         }
     }
-    const fieldChanges = diffFields(b, set, ['motorId', 'motorName', 'categoryId', 'categoryName', 'subcategoryId', 'subcategoryName', 'priority', 'title', 'description', 'motorHours', 'downtimeStartedAt']);
+    const fieldChanges = diffFields(b, set, ['motorId', 'motorName', 'categoryId', 'categoryName', 'subcategoryId', 'subcategoryId', 'subcategoryName', 'priority', 'title', 'description', 'motorHours', 'downtimeStartedAt']);
     await d.collection('breakdowns').updateOne({ _id: id }, { $set: set });
     await writeAudit(d, { breakdownId: id, eventId: `edited:${id}:${Date.now()}`, type: 'edited', actorId: u._id, actorName: u.name, note: u.role === 'yonetici' ? 'Yönetici tarafından düzenlendi' : 'Arıza bildirimi düzenlendi', fieldChanges });
     return NextResponse.json({ ok: true });
@@ -177,7 +182,7 @@ export async function DELETE(req: Request) {
         const now = new Date();
         await d.collection('breakdowns').updateOne({ _id: oid }, { $set: { archived: true, archivedAt: now, archivedBy: u._id, updatedAt: now } });
         const fieldChanges = diffFields(b, { ...b, archived: true, archivedAt: now, archivedBy: u._id }, ['archived']);
-        await writeAudit(d, { breakdownId: oid, eventId: `archived:${oid}:${Date.now()}`, type: 'archived', actorId: u._id, actorName: u.name, note: 'Yönetici tarafından arşivlendi', fieldChanges });
+        await writeAudit(d, { breakdownId: oid, eventId: `archived:${oid}:${Date.now()}`, type: 'archived', actorId: u._id, actorName: u.name, note: 'Yönetici tarafından arşivlendi' });
         return NextResponse.json({ ok: true, archived: true });
     }
     const rl = await rateLimit(req, 'breakdown:cancel', u, 20);
@@ -190,4 +195,3 @@ export async function DELETE(req: Request) {
     await writeAudit(d, { breakdownId: oid, eventId: `cancelled:${oid}:${Date.now()}`, type: 'cancelled', actorId: u._id, actorName: u.name, fieldChanges: { status: { from: b.status, to: 'iptal' } }, createdAt: now });
     return NextResponse.json({ ok: true });
 }
-
