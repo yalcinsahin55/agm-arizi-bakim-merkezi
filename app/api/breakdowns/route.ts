@@ -7,6 +7,7 @@ import { queueWhatsappMessage } from '@/lib/whatsapp-outbox';
 import { z } from 'zod';
 import { rateLimit, rateLimitResponse } from '@/lib/security';
 import { diffFields, writeAudit } from '@/lib/audit';
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://agm-arizi-bakim-merkezi-zsru.vercel.app';
 const schema = z.object({
     motorId: z.string().min(1), categoryId: z.string().min(1),
     subcategoryId: z.string().optional(), subcategoryName: z.string().optional(),
@@ -78,7 +79,7 @@ export async function POST(req: Request) {
     await notifyManagers(item, `created:${id}`, 'created');
     const waAdmins = await d.collection('users').find({ role: 'yonetici', active: true, whatsappEnabled: { $ne: false }, phoneNumber: { $exists: true, $ne: '' } }).toArray();
     for (const a of waAdmins) {
-        await queueWhatsappMessage(String(a.phoneNumber), `🚨 YENİ ARIZA ${item.code} | Motor: ${item.motorName} | ${item.categoryName} | Açan: ${u.name} | Öncelik: ${item.priority}`, 'breakdown_created');
+                await queueWhatsappMessage(String(a.phoneNumber), `🚨 YENİ ARIZA ${item.code} | Motor: ${item.motorName} | ${item.categoryName} | Açan: ${u.name} | Öncelik: ${item.priority}\n🔗 İş emri: ${APP_URL}/arizalar/${id}`, 'breakdown_created');
     }
     return NextResponse.json(item, { status: 201 });
 }
