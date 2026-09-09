@@ -18,6 +18,10 @@ export default function ManagerActions({ breakdown }: {
         setBusy(false);
         if (x.ok) {
             setRevisionNote('');
+            if (action === 'approve') {
+                router.push('/arizalar');
+                return;
+            }
             router.refresh();
         }
         else
@@ -57,4 +61,3 @@ export default function ManagerActions({ breakdown }: {
         return <div className="form"><p className="muted">Bu kayıt arşivlenmiş durumda. Operasyonel işlem yapılamaz.</p><button disabled={busy} className="btn primary" onClick={unarchive}>Arşivden Çıkar</button></div>;
     return <div className="form"><label>Teknisyen Ata<select value={techId} onChange={e => setTechId(e.target.value)}><option value="">Teknisyen seçiniz</option>{techs.map(t => <option key={String(t._id)} value={String(t._id)}>{t.name}</option>)}</select></label><button disabled={busy || !techId} className="btn primary" onClick={assign}>{breakdown.assignedTechnicianId ? 'Yeniden Ata' : 'Teknisyene Ata'}</button><button disabled={busy || breakdown.status !== 'onay_bekliyor'} className="btn primary" onClick={() => act('approve')}>Onayla ve Kapat</button>{breakdown.status === 'onay_bekliyor' && <><label>Revizyon Notu<textarea value={revisionNote} onChange={e => setRevisionNote(e.target.value)} placeholder="Teknisyenden hangi düzeltmeyi istediğinizi yazın..."/></label><button disabled={busy || revisionNote.trim().length < 5} className="btn" onClick={() => act('revision', { note: revisionNote.trim() })}>Revizyona Gönder</button></>}{['atandi', 'revizyon'].includes(breakdown.status) && breakdown.assignedTechnicianId && <button disabled={busy} className="btn" onClick={renotify}>Tekrar Bildir</button>}</div>;
 }
-
