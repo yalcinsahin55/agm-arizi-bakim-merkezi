@@ -1,0 +1,38 @@
+import { NextResponse } from 'next/server';
+import { ObjectId } from 'mongodb';
+import { db } from '@/lib/db';
+import { rateLimit, rateLimitResponse } from '@/lib/security';
+import { getCurrentUser } from '@/lib/auth';
+import { createNotification } from '@/lib/notify';
+export async function POST(req: Request, { params }: {
+    params: Promise<{
+        id: string;
+    }>;
+}) {
+    const u = await getCurrentUser();
+    if (!u || u.role !== 'yonetici')
+        return NextResponse.json({ error: 'Yetkisiz' }, { status: 403 });
+    const rl = await rateLimit(req, 'breakdown:renotify', u, 20);
+    if (!rl.ok)
+        return rateLimitResponse(rl.retryAfter);
+    const { id } = await params;
+    let oid: ObjectId;
+    try {
+        oid = new ObjectId(id);
+    }
+    catch {
+        return NextResponse.json({ error: 'Geçersiz arıza kimliği' }, { status: 400 });
+    }
+    const d = await db(), b = await d.collection('breakdowns').findOne({ _id: oid });
+    if (!b)
+        return NextResponse.json({ error: 'Arıza bulunamadı' }, { status: 404 });
+    if (b.archived)
+        return NextResponse.json({ error: 'Arşivlenmiş arızaya bildirim gönderilemez' }, { status: 409 });
+    if (!b.assignedTechnicianId || !['atandi', 'revizyon'].includes(String(b.status)))
+        return NextResponse.json({ error: 'Bu durumda yeniden bildirim gönderilemez' }, { status: 409 });
+    const now = new Date(), ev = `renotify:${id}:${now.getTime()}`;
+    await createNotification({ recipientId: String(b.assignedTechnicianId), breakdownId: id, eventId: ev, title: 'Arıza bildirimi tekrar gönderildi', body: `${b.code} • ${b.motorName} için müdahale bildiriminiz bekleniyor.`, href: `/arizalar/${id}` });
+    await d.collection('breakdown_events').insertOne({ breakdownId: oid, eventId: ev, type: 'renotify', actorId: u._id, actorName: u.name, note: 'Yönetici tarafından tekrar bildirildi.', createdAt: now });
+    return NextResponse.json({ ok: true });
+}
+

@@ -1,0 +1,39 @@
+name: Trigger Notification Retry Cron
+
+on:
+  schedule:
+    - cron: '*/5 * * * *'
+  workflow_dispatch:
+
+jobs:
+  trigger-cron:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call Cron Endpoint
+        run: |
+          BASE_URL="${{ secrets.APP_URL }}"
+          BASE_URL="${BASE_URL%/}"
+          FULL_URL="${BASE_URL}/api/cron/notifications"
+          echo "🚀 İstek atılan adres: $FULL_URL"
+
+          OUTPUT=$(curl -s -o response.txt -w "%{http_code}|%{redirect_url}" -X POST "$FULL_URL" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            -H "Content-Type: application/json")
+
+          RESPONSE_CODE="${OUTPUT%%|*}"
+          REDIRECT_URL="${OUTPUT#*|}"
+
+          echo "📥 Gelen HTTP Kodu: $RESPONSE_CODE"
+          if [ -n "$REDIRECT_URL" ]; then
+            echo "🔀 Yönlendirme hedefi: $REDIRECT_URL"
+          fi
+          echo "📄 Yanıt İçeriği:"
+          cat response.txt
+          echo ""
+
+          if [[ "$RESPONSE_CODE" =~ ^(200|201|202)$ ]]; then
+            echo "✅ Cron başarıyla tetiklendi!"
+          else
+            echo "❌ Cron tetikleme başarısız! HTTP Kodu: $RESPONSE_CODE"
+            exit 1
+          fi
