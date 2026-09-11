@@ -1,0 +1,4 @@
+export default function ReportCards({ stats }: {
+    stats: import('@/types').ReportStats;
+}) { const duration = (m: number | null) => m === null ? '—' : `${Math.floor(m / 60)}s ${m % 60}dk`; return <div className="grid cards" style={{ marginTop: 16 }}>{[['Toplam Arıza', stats.total], ['Aktif', stats.active], ['Kritik', stats.critical], ['Onay Bekleyen', stats.waiting], ['Kapanan', stats.closed], ['Ort. Bildirim Süresi', duration(stats.avgResponse)], ['Ort. Müdahale', duration(stats.avgIntervention)], ['Ort. MTTR', duration(stats.avgMttr)]].map(([n, c]) => <div className="card" key={String(n)}>{n}<div className="metric">{c}</div></div>)}</div>; }
+

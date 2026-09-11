@@ -1,0 +1,46 @@
+{
+  "name": "agm-arizi-bakim-merkezi",
+  "version": "4.9.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "seed": "tsx scripts/seed.ts",
+    "vapid": "tsx scripts/generate-vapid.ts",
+    "import:engines": "tsx scripts/import-existing-engines.ts",
+    "workflow:check": "tsx scripts/workflow-check.ts",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test": "tsx --test \"tests/**/*.test.ts\"",
+    "verify": "npm run typecheck && npm run lint && npm run test",
+    "migrate:equipment": "tsx scripts/migrate-equipment.ts"
+  },
+  "dependencies": {
+    "@vercel/blob": "^1.1.1",
+    "@types/node": "^22.15.0",
+    "@types/react": "^19.1.0",
+    "@types/react-dom": "^19.1.0",
+    "bcryptjs": "^3.0.2",
+    "jose": "^6.0.10",
+    "mongodb": "^6.17.0",
+    "next": "^16.3.3",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "web-push": "^3.6.7",
+    "zod": "^4.0.0",
+    "xlsx": "^0.18.5",
+    "pdfkit": "^0.15.0"
+  },
+  "devDependencies": {
+    "@types/web-push": "^3.6.4",
+    "eslint": "^9.0.0",
+    "eslint-config-next": "^16.3.3",
+    "prettier": "^3.5.3",
+    "tsx": "^4.19.4",
+    "typescript": "^5.8.3",
+    "@types/pdfkit": "^0.13.9"
+  }
+}
