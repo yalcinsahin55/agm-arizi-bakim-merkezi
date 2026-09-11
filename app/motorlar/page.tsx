@@ -41,22 +41,38 @@ export default async function EquipmentInventory() {
     return na.raw.localeCompare(nb.raw, 'tr');
   });
 
-  const counts = await Promise.all(
-    equipment.map(async (item) => ({
-      id: String(item._id),
-      count: await database.collection('breakdowns').countDocuments({
-        motorId: String(item._id),
-        status: { $ne: 'iptal' },
-        archived: { $ne: true },
-      }),
-      active: await database.collection('breakdowns').countDocuments({
-        motorId: String(item._id),
-        status: { $in: ['acik', 'atandi', 'devam_ediyor', 'revizyon'] },
-        archived: { $ne: true },
-      }),
-    })),
-  );
-  const map = new Map(counts.map((item) => [item.id, item]));
+  // Tek aggregation ile tüm motor sayıları (N+1 sorgu yok)
+  const ids = equipment.map((item) => String(item._id));
+  const agg = ids.length
+    ? await database
+        .collection('breakdowns')
+        .aggregate<{ _id: string; count: number; active: number }>([
+          {
+            $match: {
+              motorId: { $in: ids },
+              status: { $ne: 'iptal' },
+              archived: { $ne: true },
+            },
+          },
+          {
+            $group: {
+              _id: '$motorId',
+              count: { $sum: 1 },
+              active: {
+                $sum: {
+                  $cond: [
+                    { $in: ['$status', ['acik', 'atandi', 'devam_ediyor', 'revizyon']] },
+                    1,
+                    0,
+                  ],
+                },
+              },
+            },
+          },
+        ])
+        .toArray()
+    : [];
+  const map = new Map(agg.map((item) => [String(item._id), item]));
 
   return (
     <>
@@ -85,7 +101,7 @@ export default async function EquipmentInventory() {
 
       <div className="grid cards" style={{ marginTop: 16 }}>
         {equipment.map((item) => {
-          const count = map.get(String(item._id))!;
+          const count = map.get(String(item._id)) ?? { count: 0, active: 0 };
           const type = item.equipmentType ?? 'motor';
 
           return (

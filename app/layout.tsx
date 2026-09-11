@@ -1,5 +1,28 @@
 import './globals.css';
 import Link from 'next/link';
+import { DM_Sans, Manrope, JetBrains_Mono } from 'next/font/google';
+
+const fontSans = DM_Sans({
+  subsets: ['latin', 'latin-ext'],
+  weight: ['400', '500', '600', '700'],
+  variable: '--font-sans',
+  display: 'swap',
+});
+
+const fontDisplay = Manrope({
+  subsets: ['latin', 'latin-ext'],
+  weight: ['500', '600', '700', '800'],
+  variable: '--font-display',
+  display: 'swap',
+});
+
+const fontMono = JetBrains_Mono({
+  subsets: ['latin', 'latin-ext'],
+  weight: ['500', '600', '700'],
+  variable: '--font-mono',
+  display: 'swap',
+});
+
 import type { Metadata, Viewport } from 'next';
 import { getCurrentUser } from '@/lib/auth';
 import NotificationPulse from '@/components/NotificationPulse';
@@ -55,8 +78,8 @@ const roleLabel: Record<string, string> = {
 export default async function Layout({ children }: { children: React.ReactNode }) {
   const u = await getCurrentUser();
   return (
-    <html lang="tr">
-      <body>
+    <html lang="tr" className={`${fontSans.variable} ${fontDisplay.variable} ${fontMono.variable}`}>
+      <body className="app-body">
         <Providers>
           <div className="shell">
             <header className="top">
