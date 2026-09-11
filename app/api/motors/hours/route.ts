@@ -181,7 +181,7 @@ export async function POST(req: Request) {
       set.currentLoad = row.load;
     }
 
-    await database.collection('motors').updateOne({ _id: motor._id }, { $set: set });
+    await database.collection('motors').updateOne({ _id: motor._id as any }, { $set: set });
 
     historyDocs.push({
       motorId: String(motor._id),

@@ -117,6 +117,7 @@ export async function PATCH(req: Request) {
             _id: string;
             name: string;
             active: boolean;
+            equipmentType?: string;
         };
         type CategoryDoc = {
             _id: ObjectId;
