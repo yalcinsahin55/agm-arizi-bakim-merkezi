@@ -94,8 +94,8 @@ export default function EquipmentForm({ equipment, compact = false, onSaved }: P
           <input type="number" min="0" step="0.1" value={hours} onChange={(e) => setHours(e.target.value)} placeholder="Örn. 12500" />
         </label>
         <label>
-          Yük (%)
-          <input type="number" min="0" max="100" step="0.1" value={load} onChange={(e) => setLoad(e.target.value)} placeholder="Örn. 82" />
+          Yük (kW)
+          <input type="number" min="0" max="99999" step="0.1" value={load} onChange={(e) => setLoad(e.target.value)} placeholder="Örn. 1405" />
         </label>
       </div>
       <label>

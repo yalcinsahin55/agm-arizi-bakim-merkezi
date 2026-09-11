@@ -85,7 +85,7 @@ export default async function EquipmentInventory() {
               </p>
               <div className="summary-list">
                 <div><span>Toplam arıza</span><b>{count.count}</b></div>
-                <div><span>Yük</span><b>{item.currentLoad ?? item.load ?? '—'}%</b></div>
+                <div><span>Yük</span><b>{item.currentLoad ?? item.load ?? '—'} kW</b></div>
               </div>
             </Link>
           );

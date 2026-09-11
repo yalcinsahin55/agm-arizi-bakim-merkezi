@@ -47,7 +47,7 @@ export default function HoursUploadForm() {
 
   function downloadTemplate() {
     const csv =
-      'Motor,Saat,Yük\nAGM 1,8000,85\nAGM 2,8700,90\n';
+      'MOTOR,MOTOR ÇALIŞMA SAATİ,YÜK\nAGM 1,8746,1405\nAGM 2,9374,1413\n';
     const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -62,7 +62,7 @@ export default function HoursUploadForm() {
       <form className="form" onSubmit={onSubmit}>
         <p className="muted">
           Excel (.xlsx) veya CSV dosyası ile motor çalışma saatlerini toplu güncelleyin.
-          Sütun başlıkları: <b>Motor</b> (veya Ad / Ekipman), <b>Saat</b> (veya Çalışma Saati), isteğe bağlı <b>Yük</b>.
+          Sütun başlıkları: <b>MOTOR</b>, <b>MOTOR ÇALIŞMA SAATİ</b>, isteğe bağlı <b>YÜK</b> (kW). Excel (.xlsx) dosyanızı doğrudan yükleyebilirsiniz.
         </p>
         <div className="row" style={{ gap: 12, flexWrap: 'wrap', marginTop: 12 }}>
           <label className="btn" style={{ cursor: 'pointer' }}>

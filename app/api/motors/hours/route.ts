@@ -13,6 +13,14 @@ type HourRow = {
   motorId?: string;
 };
 
+
+function nextMapValue(map: Record<string, unknown>, needles: string[]): unknown {
+  for (const [k, v] of Object.entries(map)) {
+    if (needles.some((n) => k.includes(n))) return v;
+  }
+  return undefined;
+}
+
 function normalizeHeader(h: string) {
   return String(h || '')
     .trim()
@@ -47,12 +55,19 @@ function parseWorkbook(buffer: ArrayBuffer): HourRow[] {
     const hoursRaw =
       map['saat'] ??
       map['calismasaati'] ??
-      map['çalışmasaati'] ??
+      map['motorcalismasaati'] ??
+      map['calismaasaati'] ??
       map['hours'] ??
       map['currenthours'] ??
       map['guncelsaat'] ??
-      map['güncelsaat'];
-    const loadRaw = map['yuk'] ?? map['yük'] ?? map['load'] ?? map['currentload'];
+      map['guncealsaat'] ??
+      nextMapValue(map, ['saat']);
+    const loadRaw =
+      map['yuk'] ??
+      map['load'] ??
+      map['currentload'] ??
+      map['kw'] ??
+      nextMapValue(map, ['yuk', 'load', 'kw']);
     const idRaw = map['id'] ?? map['motorid'] ?? map['_id'];
     const hours = hoursRaw === '' || hoursRaw == null ? undefined : Number(hoursRaw);
     const load = loadRaw === '' || loadRaw == null ? undefined : Number(loadRaw);
@@ -104,8 +119,15 @@ export async function POST(req: Request) {
             (map['ad'] as string) ||
             (map['name'] as string) ||
             '';
-          const hoursRaw = map['saat'] ?? map['calismasaati'] ?? map['hours'] ?? map['guncelsaat'];
-          const loadRaw = map['yuk'] ?? map['load'];
+          const hoursRaw =
+            map['saat'] ??
+            map['calismasaati'] ??
+            map['motorcalismasaati'] ??
+            map['hours'] ??
+            map['guncelsaat'] ??
+            nextMapValue(map, ['saat']);
+          const loadRaw =
+            map['yuk'] ?? map['load'] ?? map['kw'] ?? nextMapValue(map, ['yuk', 'load', 'kw']);
           const hours = hoursRaw === '' || hoursRaw == null ? undefined : Number(hoursRaw);
           const load = loadRaw === '' || loadRaw == null ? undefined : Number(loadRaw);
           return {

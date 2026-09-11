@@ -48,8 +48,8 @@ export async function POST(req: Request) {
   if (body.hours !== undefined && !validNumber(body.hours)) {
     return NextResponse.json({ error: 'Çalışma saati geçersiz.' }, { status: 400 });
   }
-  if (body.load !== undefined && !validNumber(body.load, 0, 100)) {
-    return NextResponse.json({ error: 'Yük 0-100 arasında olmalıdır.' }, { status: 400 });
+  if (body.load !== undefined && !validNumber(body.load, 0, 99999)) {
+    return NextResponse.json({ error: 'Yük (kW) geçersiz.' }, { status: 400 });
   }
 
   const database = await db();

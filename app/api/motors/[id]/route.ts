@@ -138,8 +138,8 @@ export async function PATCH(req: Request, { params }: {
         return NextResponse.json({ error: 'Geçersiz ekipman türü.' }, { status: 400 });
     if (body.hours !== undefined && (typeof body.hours !== 'number' || !Number.isFinite(body.hours) || body.hours < 0))
         return NextResponse.json({ error: 'Çalışma saati geçersiz.' }, { status: 400 });
-    if (body.load !== undefined && (typeof body.load !== 'number' || !Number.isFinite(body.load) || body.load < 0 || body.load > 100))
-        return NextResponse.json({ error: 'Yük 0-100 arasında olmalıdır.' }, { status: 400 });
+    if (body.load !== undefined && (typeof body.load !== 'number' || !Number.isFinite(body.load) || body.load < 0 || body.load > 99999))
+        return NextResponse.json({ error: 'Yük (kW) geçersiz.' }, { status: 400 });
     if (typeof body.name === 'string' && body.name.trim()) {
         const duplicate = await database.collection<Motor>('motors').findOne({
             _id: { $ne: id },
@@ -153,7 +153,7 @@ export async function PATCH(req: Request, { params }: {
         set.hours = body.hours;
         set.currentHours = body.hours;
     }
-    if (typeof body.load === 'number' && Number.isFinite(body.load) && body.load >= 0 && body.load <= 100) {
+    if (typeof body.load === 'number' && Number.isFinite(body.load) && body.load >= 0 && body.load <= 99999) {
         set.load = body.load;
         set.currentLoad = body.load;
     }

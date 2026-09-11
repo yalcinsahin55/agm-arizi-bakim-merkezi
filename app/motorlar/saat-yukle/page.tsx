@@ -59,7 +59,7 @@ export default async function SaatYuklePage() {
               <tr>
                 <th>Motor</th>
                 <th>Saat</th>
-                <th>Yük</th>
+                <th>Yük (kW)</th>
                 <th>Son güncelleme</th>
               </tr>
             </thead>
