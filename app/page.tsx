@@ -8,6 +8,7 @@ import TechnicianWorkload from '@/components/dashboard/TechnicianWorkload';
 import TrendBars from '@/components/dashboard/TrendBars';
 import type { Breakdown, User } from '@/types';
 import Logo from '@/components/Logo';
+import LiveClock from '@/components/LiveClock';
 
 const activeStatuses = ['acik', 'atandi', 'devam_ediyor', 'revizyon'] as const;
 function startOfDay(d: Date) {
@@ -91,7 +92,9 @@ export default async function Home() {
         : { createdBy: u._id }),
   };
 
-  const since14 = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000);
+  // Sunucu anlık tarih penceresi (render-time snapshot)
+  const since14 = new Date();
+  since14.setUTCDate(since14.getUTCDate() - 14);
   const isManager = u.role === 'yonetici';
 
   // Tek turda KPI + trend + recent (1000 doküman + N+1 teknisyen sorgusu yok)
@@ -281,17 +284,19 @@ export default async function Home() {
     <>
       <section className="hero-banner">
         <div className="hero-left">
-          <Logo size={40} className="hero-logo" />
+          <Logo size={48} className="hero-logo" />
           <div style={{ minWidth: 0 }}>
             <div className="eyebrow">AVCIKORU SANTRALİ</div>
-            <h2>
-              {greet}, {String(u.name).split(' ')[0]}
+            <h2 className="hero-greet">
+              {greet}, <span className="hero-name">{String(u.name).split(' ')[0]}</span>
             </h2>
-            <div className="muted" style={{ fontSize: 13 }}>
-              {roleMsg}
-            </div>
-            <div className="muted" style={{ marginTop: 6, fontSize: 12 }}>
-              {motorCount} motor · {todayLabel}
+            <div className="hero-role">{roleMsg}</div>
+            <div className="hero-meta">
+              <span className="hero-meta-item">{motorCount} motor</span>
+              <span className="hero-meta-sep">·</span>
+              <span className="hero-meta-item">{todayLabel}</span>
+              <span className="hero-meta-sep">·</span>
+              <LiveClock className="hero-clock" />
             </div>
           </div>
         </div>

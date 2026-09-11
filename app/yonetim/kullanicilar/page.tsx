@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useToast } from '@/components/ui/Toaster';
+import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import type { Role, User } from '@/types';
 
 const labels: Record<string, string> = {
@@ -21,6 +22,8 @@ export default function Users() {
   const [resetPassword, setResetPassword] = useState('');
   const [resetConfirm, setResetConfirm] = useState('');
   const [busy, setBusy] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<User | null>(null);
+  const [deleteBusy, setDeleteBusy] = useState(false);
 
   async function load() {
     const r = await fetch('/api/users');
@@ -61,20 +64,26 @@ export default function Users() {
     load();
   }
 
-  async function del(x: User) {
-    if (!window.confirm(`${x.name} kullanıcısı KALICI olarak silinsin mi?`)) return;
-    const r = await fetch('/api/users', {
-      method: 'DELETE',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ id: String(x._id) }),
-    });
-    if (!r.ok) {
-      const err = await r.json().catch(() => ({}));
-      toast.error('Silinemedi', err.error);
-    } else {
-      toast.success('Kullanıcı silindi');
+  async function confirmDelete() {
+    if (!deleteTarget) return;
+    setDeleteBusy(true);
+    try {
+      const r = await fetch('/api/users', {
+        method: 'DELETE',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ id: String(deleteTarget._id) }),
+      });
+      if (!r.ok) {
+        const err = await r.json().catch(() => ({}));
+        toast.error('Silinemedi', err.error);
+      } else {
+        toast.success('Kullanıcı silindi');
+        setDeleteTarget(null);
+      }
+      load();
+    } finally {
+      setDeleteBusy(false);
     }
-    load();
   }
 
   function startEdit(x: User) {
@@ -202,7 +211,7 @@ export default function Users() {
                 <button className="btn" onClick={() => toggle(x)}>
                   {x.active ? 'Pasifleştir' : 'Aktifleştir'}
                 </button>
-                <button className="btn danger" onClick={() => del(x)}>
+                <button className="btn danger" onClick={() => setDeleteTarget(x)}>
                   Sil
                 </button>
               </div>
@@ -273,6 +282,21 @@ export default function Users() {
           </div>
         ))}
       </div>
+
+      <ConfirmDialog
+        open={!!deleteTarget}
+        title="Kullanıcı Kalıcı Olarak Silinsin mi?"
+        description={
+          deleteTarget
+            ? `"${deleteTarget.name}" kullanıcısı kalıcı olarak silinecek. Bu işlem geri alınamaz; kullanıcıyı geçici olarak devre dışı bırakmak isterseniz "Pasifleştir" seçeneğini kullanın.`
+            : undefined
+        }
+        confirmLabel="Kalıcı Olarak Sil"
+        danger
+        busy={deleteBusy}
+        onConfirm={confirmDelete}
+        onCancel={() => setDeleteTarget(null)}
+      />
     </>
   );
 }

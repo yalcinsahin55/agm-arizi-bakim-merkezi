@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
+import ConfirmDialog from '@/components/ui/ConfirmDialog';
 type Session = {
     _id: string;
     userName: string;
@@ -14,6 +15,7 @@ export default function SessionsPage() {
     const [sessions, setSessions] = useState<Session[]>([]);
     const [busy, setBusy] = useState('');
     const [error, setError] = useState('');
+    const [revokeTarget, setRevokeTarget] = useState<Session | null>(null);
     async function load() {
         const response = await fetch('/api/sessions', { cache: 'no-store' });
         if (!response.ok) {
@@ -25,9 +27,9 @@ export default function SessionsPage() {
     useEffect(() => {
         queueMicrotask(load);
     }, []);
-    async function revoke(id: string) {
-        if (!confirm('Bu aktif oturum uzaktan kapatılsın mı?'))
-            return;
+    async function confirmRevoke() {
+        if (!revokeTarget) return;
+        const id = revokeTarget._id;
         setBusy(id);
         const response = await fetch('/api/sessions', {
             method: 'DELETE',
@@ -38,8 +40,10 @@ export default function SessionsPage() {
         if (!response.ok) {
             const data = await response.json().catch(() => ({}));
             setError(data.error || 'Oturum kapatılamadı.');
+            setRevokeTarget(null);
             return;
         }
+        setRevokeTarget(null);
         await load();
     }
     return (<>
@@ -71,7 +75,7 @@ export default function SessionsPage() {
                 <td>{new Date(session.lastSeenAt).toLocaleString('tr-TR')}</td>
                 <td>{new Date(session.expiresAt).toLocaleString('tr-TR')}</td>
                 <td>
-                  <button className="btn" disabled={busy === session._id} onClick={() => revoke(session._id)}>
+                  <button className="btn" disabled={busy === session._id} onClick={() => setRevokeTarget(session)}>
                     {busy === session._id ? 'Kapatılıyor…' : 'Oturumu Kapat'}
                   </button>
                 </td>
@@ -80,6 +84,20 @@ export default function SessionsPage() {
         </table>
         {!sessions.length && <div className="empty-compact">Aktif oturum bulunmuyor.</div>}
       </div>
+
+      <ConfirmDialog
+        open={!!revokeTarget}
+        title="Oturum Uzaktan Kapatılsın mı?"
+        description={
+          revokeTarget
+            ? `"${revokeTarget.userName}" kullanıcısının bu cihazdaki aktif oturumu kapatılacak; kullanıcı tekrar giriş yapması gerekecek.`
+            : undefined
+        }
+        confirmLabel="Oturumu Kapat"
+        danger
+        busy={!!busy}
+        onConfirm={confirmRevoke}
+        onCancel={() => setRevokeTarget(null)}
+      />
     </>);
 }
-
