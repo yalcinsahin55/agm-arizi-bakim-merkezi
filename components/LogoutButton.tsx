@@ -1,8 +1,10 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 
 export default function LogoutButton() {
+  const router = useRouter();
   const [busy, setBusy] = useState(false);
 
   async function logout() {
@@ -13,7 +15,8 @@ export default function LogoutButton() {
     } catch {
       /* ignore */
     }
-    window.location.href = '/giris';
+    router.push('/giris');
+    router.refresh();
   }
 
   return (

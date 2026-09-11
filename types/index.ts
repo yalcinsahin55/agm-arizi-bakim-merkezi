@@ -10,6 +10,7 @@ export interface User {
     active: boolean;
     phoneNumber?: string;
     whatsappEnabled?: boolean;
+    passwordHash?: string;
 }
 export interface Motor {
     _id: string;

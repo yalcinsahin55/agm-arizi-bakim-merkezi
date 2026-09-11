@@ -69,10 +69,16 @@ export default async function Layout({ children }: { children: React.ReactNode }
               </Link>
               {u ? (
                 <div className="top-user">
-                  <div className="top-user-meta">
+                  <Link href="/profil" className="account-btn" title="Hesabım" aria-label="Hesabım">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                      <circle cx="12" cy="8" r="3.4" />
+                      <path d="M5 20c0-3.6 3.1-6 7-6s7 2.4 7 6" />
+                    </svg>
+                  </Link>
+                  <Link href="/profil" className="top-user-meta" title="Hesabım">
                     <span className="top-user-name">{u.name}</span>
                     <span className="top-user-role">{roleLabel[u.role] || u.role}</span>
-                  </div>
+                  </Link>
                   <LogoutButton />
                 </div>
               ) : (
@@ -124,6 +130,7 @@ export default async function Layout({ children }: { children: React.ReactNode }
                       </>
                     )}
                     {u.role !== 'goruntuleyici' && <Link href="/bildirimler">Bildirimler</Link>}
+                    <Link href="/profil">Hesabım</Link>
                   </nav>
                 </aside>
                 <main className="main">{children}</main>

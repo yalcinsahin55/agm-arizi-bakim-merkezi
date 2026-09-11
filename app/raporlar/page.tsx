@@ -43,19 +43,22 @@ export default function Reports() {
     }
   }
 
+  // Bilinçli olarak yalnızca ilk yüklemede çalışır; filtre değiştiğinde
+  // yeniden veri çekme işi "Raporu Oluştur" butonuna (load prop'u) bırakılmıştır.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { queueMicrotask(load); }, []);
 
-  function csv() {
+  function csvHref() {
     const qs = new URLSearchParams(Object.entries(f).filter(([, value]) => Boolean(value)));
     qs.set('format', 'csv');
-    window.location.href = `/api/reports?${qs.toString()}`;
+    return `/api/reports?${qs.toString()}`;
   }
 
   return (
     <>
       <h1 className="page-title">Gelişmiş Arıza Raporları</h1>
       <p className="muted">CEO/Görüntüleyici ve yöneticiler için filtrelenebilir yönetim raporları.</p>
-      <ReportFilters motors={motors} cats={cats} techs={techs} f={f} setF={setF} load={load} csv={csv} loading={loading} />
+      <ReportFilters motors={motors} cats={cats} techs={techs} f={f} setF={setF} load={load} csvHref={csvHref()} loading={loading} />
       {report && (
         <>
           <ReportCards stats={report.stats} />

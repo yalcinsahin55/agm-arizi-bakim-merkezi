@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Image from 'next/image';
 
 type BeforeInstallPromptEvent = Event & {
   prompt: () => Promise<void>;
@@ -86,7 +87,7 @@ export default function PwaRegister() {
   return (
     <div className="pwa-banner" role="dialog" aria-label="Uygulamayı yükle">
       <div className="pwa-banner-icon" aria-hidden>
-        <img src="/icon-72.png" alt="" width={40} height={40} />
+        <Image src="/icon-72.png" alt="" width={40} height={40} />
       </div>
       <div className="pwa-banner-body">
         <b>AGM Arızi’yi yükle</b>

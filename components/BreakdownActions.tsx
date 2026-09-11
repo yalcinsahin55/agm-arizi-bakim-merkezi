@@ -14,7 +14,7 @@ export default function BreakdownActions({
   user,
 }: {
   breakdown: Breakdown;
-  user: User;
+  user: Pick<User, '_id' | 'role'>;
 }) {
   const router = useRouter();
   const toast = useToast();

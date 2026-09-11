@@ -47,6 +47,9 @@ export default function AuditPage() {
         setActors(j.actors || []);
         setLoading(false);
     }
+    // Bilinçli olarak yalnızca ilk yüklemede çalışır; filtre değiştiğinde
+    // yeniden veri çekme işi "Filtrele"/"Yenile" butonlarına bırakılmıştır.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     useEffect(() => { queueMicrotask(load); }, []);
     return <section><div className="page-head"><div><h1>Denetim Günlüğü</h1><p>Arızi bakım üzerinde yapılan kritik işlemlerin değiştirilemez olay kaydı.</p></div><div style={{ display: 'flex', gap: 8 }}><button className="btn" onClick={load}>Yenile</button><a className="btn" href={`/api/audit?format=csv${from ? `&from=${from}` : ''}${to ? `&to=${to}` : ''}${type ? `&type=${encodeURIComponent(type)}` : ''}${actorId ? `&actorId=${encodeURIComponent(actorId)}` : ''}`}>CSV Dışa Aktar</a></div></div>
  <div className="card filters"><input type="date" value={from} onChange={e => setFrom(e.target.value)}/><input type="date" value={to} onChange={e => setTo(e.target.value)}/><select value={type} onChange={e => setType(e.target.value)}><option value="">Tüm işlemler</option>{types.map(x => <option key={x} value={x}>{labels[x] || x}</option>)}</select><select value={actorId} onChange={e => setActorId(e.target.value)}><option value="">Tüm kullanıcılar</option>{actors.map(x => <option key={x.id} value={x.id}>{x.name}</option>)}</select><button className="btn primary" onClick={load}>Filtrele</button></div>

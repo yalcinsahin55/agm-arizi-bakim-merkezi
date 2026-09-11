@@ -16,7 +16,11 @@ export default function Users() {
   const [rows, setRows] = useState<User[]>([]);
   const [form, setForm] = useState<{ name: string; phone: string; password: string; role: Role }>({ name: '', phone: '', password: '', role: 'goruntuleyici' });
   const [editId, setEditId] = useState<string | null>(null);
-  const [ef, setEf] = useState<{ name: string; phone: string; password: string; role: Role }>({ name: '', phone: '', password: '', role: 'goruntuleyici' });
+  const [ef, setEf] = useState<{ name: string; phone: string; role: Role }>({ name: '', phone: '', role: 'goruntuleyici' });
+  const [resetId, setResetId] = useState<string | null>(null);
+  const [resetPassword, setResetPassword] = useState('');
+  const [resetConfirm, setResetConfirm] = useState('');
+  const [busy, setBusy] = useState(false);
 
   async function load() {
     const r = await fetch('/api/users');
@@ -74,18 +78,17 @@ export default function Users() {
   }
 
   function startEdit(x: User) {
+    setResetId(null);
     setEditId(String(x._id));
     setEf({
       name: x.name || '',
       phone: x.phoneNumber || '',
-      password: '',
       role: x.role || 'goruntuleyici',
     });
   }
 
   async function saveEdit(id: string) {
-    const body: { id: string; name?: string; phone?: string; role?: Role; password?: string } = { id, name: ef.name, phone: ef.phone, role: ef.role };
-    if (ef.password) body.password = ef.password;
+    const body: { id: string; name?: string; phone?: string; role?: Role } = { id, name: ef.name, phone: ef.phone, role: ef.role };
     const r = await fetch('/api/users', {
       method: 'PATCH',
       headers: { 'content-type': 'application/json' },
@@ -99,6 +102,43 @@ export default function Users() {
       setEditId(null);
     }
     load();
+  }
+
+  function startReset(x: User) {
+    setEditId(null);
+    setResetId(String(x._id));
+    setResetPassword('');
+    setResetConfirm('');
+  }
+
+  async function saveReset(id: string) {
+    if (resetPassword.length < 8) {
+      toast.warning('Şifre çok kısa', 'Yeni şifre en az 8 karakter olmalı.');
+      return;
+    }
+    if (resetPassword !== resetConfirm) {
+      toast.warning('Şifreler eşleşmiyor', 'Yeni şifre ve tekrarı aynı olmalı.');
+      return;
+    }
+    setBusy(true);
+    try {
+      const r = await fetch('/api/users', {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ id, password: resetPassword }),
+      });
+      if (!r.ok) {
+        const err = await r.json().catch(() => ({}));
+        toast.error('Şifre sıfırlanamadı', err.error);
+        return;
+      }
+      toast.success('Şifre sıfırlandı', 'Yeni şifreyi kullanıcıya güvenli bir şekilde iletin.');
+      setResetId(null);
+      setResetPassword('');
+      setResetConfirm('');
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (
@@ -152,9 +192,12 @@ export default function Users() {
                   {x.whatsappEnabled === false ? ' · WhatsApp kapalı' : ''}
                 </div>
               </div>
-              <div style={{ display: 'flex', gap: 8 }}>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                 <button className="btn" onClick={() => startEdit(x)}>
                   Düzenle
+                </button>
+                <button className="btn" onClick={() => startReset(x)}>
+                  Şifre Sıfırla
                 </button>
                 <button className="btn" onClick={() => toggle(x)}>
                   {x.active ? 'Pasifleştir' : 'Aktifleştir'}
@@ -177,12 +220,6 @@ export default function Users() {
                   value={ef.phone}
                   onChange={(e) => setEf({ ...ef, phone: e.target.value })}
                 />
-                <input
-                  placeholder="Yeni şifre (değiştirmeyecekseniz boş bırakın)"
-                  type="password"
-                  value={ef.password}
-                  onChange={(e) => setEf({ ...ef, password: e.target.value })}
-                />
                 <select value={ef.role} onChange={(e) => setEf({ ...ef, role: e.target.value as Role })}>
                   {Object.entries(labels).map(([k, v]) => (
                     <option key={k} value={k}>
@@ -195,6 +232,39 @@ export default function Users() {
                     Kaydet
                   </button>
                   <button className="btn" onClick={() => setEditId(null)}>
+                    Vazgeç
+                  </button>
+                </div>
+              </div>
+            )}
+            {resetId === String(x._id) && (
+              <div className="form" style={{ marginTop: 12, display: 'grid', gap: 8 }}>
+                <p className="muted" style={{ margin: 0 }}>
+                  <b>{x.name}</b> için yeni bir şifre belirleyin. Şifreyi unutan kullanıcı bu
+                  şifreyle giriş yapabilecek; ilk fırsatta kendi şifresini &quot;Hesabım&quot;
+                  sayfasından değiştirmesini önerin.
+                </p>
+                <input
+                  placeholder="Yeni şifre (en az 8 karakter)"
+                  type="password"
+                  value={resetPassword}
+                  onChange={(e) => setResetPassword(e.target.value)}
+                  autoComplete="new-password"
+                  minLength={8}
+                />
+                <input
+                  placeholder="Yeni şifre (tekrar)"
+                  type="password"
+                  value={resetConfirm}
+                  onChange={(e) => setResetConfirm(e.target.value)}
+                  autoComplete="new-password"
+                  minLength={8}
+                />
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button className="btn primary" disabled={busy} onClick={() => saveReset(String(x._id))}>
+                    {busy ? 'Kaydediliyor…' : 'Şifreyi Sıfırla'}
+                  </button>
+                  <button className="btn" disabled={busy} onClick={() => setResetId(null)}>
                     Vazgeç
                   </button>
                 </div>

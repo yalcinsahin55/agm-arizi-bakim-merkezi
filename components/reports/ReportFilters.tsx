@@ -22,11 +22,11 @@ interface Props {
   f: ReportFiltersState;
   setF: Dispatch<SetStateAction<ReportFiltersState>>;
   load: () => void;
-  csv: () => void;
+  csvHref: string;
   loading: boolean;
 }
 
-export default function ReportFilters({ motors, cats, techs, f, setF, load, csv, loading }: Props) {
+export default function ReportFilters({ motors, cats, techs, f, setF, load, csvHref, loading }: Props) {
   const statuses = [
     ['acik', 'Açık'], ['atandi', 'Atandı'], ['devam_ediyor', 'Devam Ediyor'],
     ['onay_bekliyor', 'Onay Bekliyor'], ['revizyon', 'Revizyon'],
@@ -51,7 +51,7 @@ export default function ReportFilters({ motors, cats, techs, f, setF, load, csv,
       </div>
       <div className="row">
         <button className="btn primary" onClick={load}>{loading ? 'Hesaplanıyor…' : 'Raporu Oluştur'}</button>
-        <button className="btn" onClick={csv}>CSV / Excel&apos;e Uygun İndir</button>
+        <a className="btn" href={csvHref}>CSV / Excel&apos;e Uygun İndir</a>
       </div>
     </div>
   );

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import Image from 'next/image';
 import { useToast } from '@/components/ui/Toaster';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
 
@@ -113,8 +114,8 @@ export default function BreakdownAttachments({
         {items.map((a) => (
           <div className="attachment" key={a._id}>
             {a.contentType.startsWith('image/') ? (
-              <a href={a.url} target="_blank" rel="noreferrer">
-                <img src={a.url} alt={a.fileName} />
+              <a href={a.url} target="_blank" rel="noreferrer" className="attachment-thumb">
+                <Image src={a.url} alt={a.fileName} fill unoptimized style={{ objectFit: 'cover' }} />
               </a>
             ) : (
               <a className="attachment-file" href={a.url} target="_blank" rel="noreferrer">

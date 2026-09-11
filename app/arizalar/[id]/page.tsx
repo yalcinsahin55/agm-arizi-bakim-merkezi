@@ -97,7 +97,7 @@ export default async function Detail({
               Arızayı Düzenle (motor / kategori / detay)
             </Link>
           )}
-          <BreakdownActions breakdown={JSON.parse(JSON.stringify(b))} user={u} />
+          <BreakdownActions breakdown={JSON.parse(JSON.stringify(b))} user={{ _id: u._id, role: u.role }} />
         </div>
       </div>
       <TechnicalReport breakdown={breakdown} />
