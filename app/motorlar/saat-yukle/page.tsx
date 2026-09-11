@@ -20,12 +20,19 @@ export default async function SaatYuklePage() {
     .limit(20)
     .toArray();
 
-  const motors = await database
+  const motorsRaw = await database
     .collection<Motor>('motors')
     .find({ active: true })
     .project({ name: 1, currentHours: 1, hours: 1, currentLoad: 1, load: 1, sourceUpdateDate: 1 })
-    .sort({ name: 1 })
     .toArray();
+  const motors = motorsRaw.sort((a, b) => {
+    const ma = String(a.name || '').match(/(\d+)/);
+    const mb = String(b.name || '').match(/(\d+)/);
+    const na = ma ? Number(ma[1]) : Number.POSITIVE_INFINITY;
+    const nb = mb ? Number(mb[1]) : Number.POSITIVE_INFINITY;
+    if (na !== nb) return na - nb;
+    return String(a.name || '').localeCompare(String(b.name || ''), 'tr');
+  });
 
   return (
     <>

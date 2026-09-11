@@ -19,10 +19,27 @@ export default async function EquipmentInventory() {
   if (!user) return null;
 
   const database = await db();
-  const equipment = await database.collection<Motor>('motors')
+  const equipmentRaw = await database.collection<Motor>('motors')
     .find({ active: true })
-    .sort({ equipmentType: 1, name: 1 })
     .toArray();
+
+  // AGM 1, AGM 2, ... AGM 10, AGM 39 doğal sayı sırası
+  const naturalName = (name: string) => {
+    const m = String(name || '').match(/(\d+)/);
+    const num = m ? Number(m[1]) : Number.POSITIVE_INFINITY;
+    const prefix = String(name || '').replace(/\d+.*/, '').trim().toLowerCase();
+    return { prefix, num, raw: String(name || '').toLowerCase() };
+  };
+  const equipment = equipmentRaw.sort((a, b) => {
+    const typeA = a.equipmentType ?? 'motor';
+    const typeB = b.equipmentType ?? 'motor';
+    if (typeA !== typeB) return typeA.localeCompare(typeB, 'tr');
+    const na = naturalName(a.name);
+    const nb = naturalName(b.name);
+    if (na.prefix !== nb.prefix) return na.prefix.localeCompare(nb.prefix, 'tr');
+    if (na.num !== nb.num) return na.num - nb.num;
+    return na.raw.localeCompare(nb.raw, 'tr');
+  });
 
   const counts = await Promise.all(
     equipment.map(async (item) => ({
