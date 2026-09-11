@@ -20,7 +20,26 @@ export default async function Arizalar() {
     .collection('breakdowns')
     .find(q)
     .sort({ createdAt: -1 })
-    .limit(200)
+    .limit(150)
+    .project({
+      code: 1,
+      title: 1,
+      status: 1,
+      priority: 1,
+      motorName: 1,
+      categoryName: 1,
+      subcategoryName: 1,
+      assignedTechnicianName: 1,
+      assignedTechnicianId: 1,
+      createdBy: 1,
+      createdByName: 1,
+      createdAt: 1,
+      updatedAt: 1,
+      startedAt: 1,
+      closedAt: 1,
+      seenAt: 1,
+      submittedAt: 1,
+    })
     .toArray();
 
   const serialized = JSON.parse(JSON.stringify(rows));

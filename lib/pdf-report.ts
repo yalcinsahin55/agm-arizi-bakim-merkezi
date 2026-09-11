@@ -93,14 +93,14 @@ export async function buildReportPdf(
     const right = pageW - 40;
     const contentW = right - left;
 
-    function useRegular(size = 10) {
+    function setFontRegular(size = 10) {
       try {
         doc.font('Noto').fontSize(size);
       } catch {
         doc.font('Helvetica').fontSize(size);
       }
     }
-    function useBold(size = 10) {
+    function setFontBold(size = 10) {
       try {
         doc.font('NotoBold').fontSize(size);
       } catch {
@@ -110,21 +110,21 @@ export async function buildReportPdf(
 
     // —— Header ——
     doc.rect(0, 0, pageW, 72).fill('#0f2744');
-    useBold(16);
+    setFontBold(16);
     doc.fillColor('#ffffff').text('AGM ARIZİ BAKIM MERKEZİ', left, 18, { width: contentW });
-    useRegular(10);
+    setFontRegular(10);
     doc.fillColor('#c8d6e5').text('Profesyonel Arıza & Performans Raporu', left, 40, { width: contentW });
-    useRegular(8);
+    setFontRegular(8);
     doc.text(`Oluşturma: ${new Date().toLocaleString('tr-TR')}`, left, 54, { width: contentW, align: 'right' });
 
     let y = 90;
     doc.fillColor('#111827');
 
     // —— Filter summary ——
-    useBold(11);
+    setFontBold(11);
     doc.text('Rapor Kapsamı', left, y);
     y += 16;
-    useRegular(9);
+    setFontRegular(9);
     const filterLines: string[] = [];
     if (filters.from || filters.to) {
       filterLines.push(`Tarih: ${filters.from || '…'} — ${filters.to || '…'}`);
@@ -161,9 +161,9 @@ export async function buildReportPdf(
       const x = left + colIdx * (boxW + 12);
       const by = y + rowIdx * (boxH + 8);
       doc.roundedRect(x, by, boxW, boxH, 4).lineWidth(0.5).strokeColor('#d1d5db').stroke();
-      useRegular(8);
+      setFontRegular(8);
       doc.fillColor('#6b7280').text(kpi[0], x + 8, by + 8, { width: boxW - 16 });
-      useBold(12);
+      setFontBold(12);
       doc.fillColor('#111827').text(kpi[1], x + 8, by + 20, { width: boxW - 16 });
     });
     y += Math.ceil(kpis.length / col) * (boxH + 8) + 16;
@@ -177,7 +177,7 @@ export async function buildReportPdf(
 
     function sectionTitle(title: string) {
       ensureSpace(28);
-      useBold(11);
+      setFontBold(11);
       doc.fillColor('#0f2744').text(title, left, y);
       y += 6;
       doc
@@ -198,7 +198,7 @@ export async function buildReportPdf(
       ensureSpace(30);
       const rowH = 16;
       // header
-      useBold(8);
+      setFontBold(8);
       doc.fillColor('#ffffff');
       doc.rect(left, y, contentW, rowH).fill('#0f2744');
       let x = left;
@@ -208,7 +208,7 @@ export async function buildReportPdf(
       });
       y += rowH;
 
-      useRegular(8);
+      setFontRegular(8);
       rows.forEach((row, ri) => {
         ensureSpace(rowH + 2);
         if (ri % 2 === 0) {
@@ -314,7 +314,7 @@ export async function buildReportPdf(
         .strokeColor('#d1d5db')
         .lineWidth(0.5)
         .stroke();
-      useRegular(7);
+      setFontRegular(7);
       doc.fillColor('#6b7280');
       doc.text('AGM Arızi Bakım Merkezi — Gizli / Şirket İçi Kullanım', left, bottom - 2, {
         width: contentW * 0.65,
