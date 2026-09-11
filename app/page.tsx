@@ -105,7 +105,7 @@ export default async function Home() {
         notSeen: { n: number }[];
         mttr: { avg: number }[];
       }>([
-        { $match: q },
+        { $match: q as any },
         {
           $facet: {
             open: [
@@ -158,7 +158,7 @@ export default async function Home() {
       ])
       .toArray(),
     b
-      .find(q)
+      .find(q as any)
       .sort({ createdAt: -1 })
       .limit(8)
       .project({
@@ -172,7 +172,7 @@ export default async function Home() {
         createdAt: 1,
         createdByName: 1,
       })
-      .toArray(),
+      .toArray() as Promise<Breakdown[]>,
     b
       .find({
         ...q,
@@ -180,10 +180,10 @@ export default async function Home() {
           { createdAt: { $gte: since14 } },
           { closedAt: { $gte: since14 } },
         ],
-      })
+      } as any)
       .project({ createdAt: 1, closedAt: 1, status: 1, updatedAt: 1, startedAt: 1 })
       .limit(400)
-      .toArray(),
+      .toArray() as Promise<Breakdown[]>,
     isManager
       ? d
           .collection<User>('users')
@@ -369,14 +369,12 @@ export default async function Home() {
           <h2>Operasyon Özeti</h2>
           <div className="summary-list">
             <div>
-              <span>Aktif / Toplam</span>
-              <b>
-                {open} / {all.length}
-              </b>
+              <span>Aktif arıza</span>
+              <b>{open}</b>
             </div>
             <div>
-              <span>Kritik payı</span>
-              <b>{all.length ? Math.round((critical / all.length) * 100) : 0}%</b>
+              <span>Kritik (aktif)</span>
+              <b>{critical}</b>
             </div>
             <div>
               <span>Onay bekleyen</span>
