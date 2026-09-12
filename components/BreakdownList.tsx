@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import type { User } from '@/types';
 import { useToast } from '@/components/ui/Toaster';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
@@ -18,8 +18,12 @@ export default function BreakdownList({
 }) {
   const router = useRouter();
   const toast = useToast();
+  const searchParams = useSearchParams();
   const [rows, setRows] = useState<BreakdownRow[]>(initialRows);
-  const [q, setQ] = useState('');
+  // Genel arama (Ctrl/Cmd+K) veya tekrarlayan arıza uyarısı gibi başka
+  // sayfalardan "?q=..." ile buraya derin bağlantı (deep link) verilebilsin diye
+  // başlangıç değeri URL'den okunur.
+  const [q, setQ] = useState(() => searchParams.get('q') || '');
   const [status, setStatus] = useState('all');
   const [priority, setPriority] = useState('all');
   const [busyId, setBusyId] = useState<string | null>(null);

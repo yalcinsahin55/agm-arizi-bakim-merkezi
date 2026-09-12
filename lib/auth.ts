@@ -2,7 +2,7 @@ import { cookies } from 'next/headers';
 import { SignJWT, jwtVerify } from 'jose';
 import { db } from './db';
 import { sessionId, type SessionRecord } from './session';
-import type { Role, User } from '@/types';
+import type { User } from '@/types';
 const configuredSecret = process.env.JWT_SECRET;
 if (process.env.NODE_ENV === 'production' &&
     (!configuredSecret || configuredSecret.length < 32)) {
@@ -74,13 +74,5 @@ export async function revokeCurrentSession() {
         // Cookie will still be removed by the logout route.
     }
 }
-export function can(role: Role, action: string) {
-    const permissions: Record<Role, string[]> = {
-        yonetici: ['*'],
-        teknisyen: ['breakdown:view-assigned', 'breakdown:accept', 'breakdown:start', 'breakdown:report'],
-        operator: ['breakdown:create', 'breakdown:edit-own', 'breakdown:delete-own', 'breakdown:view-own'],
-        goruntuleyici: ['breakdown:view-all', 'report:view'],
-    };
-    return permissions[role].includes('*') || permissions[role].includes(action);
-}
+export { can } from './permissions';
 

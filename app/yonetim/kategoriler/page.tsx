@@ -4,7 +4,12 @@ import { useEffect, useMemo, useState } from 'react';
 import { useToast } from '@/components/ui/Toaster';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import PromptDialog from '@/components/ui/PromptDialog';
-import type { Category } from '@/types';
+import type { Category, TechnicianType } from '@/types';
+
+const nightRouteLabels: Record<TechnicianType, string> = {
+  elektromekanik: 'Elektromekanik nöbetçiye',
+  normal: 'Normal nöbetçiye',
+};
 
 export default function Cats() {
   const toast = useToast();
@@ -12,6 +17,7 @@ export default function Cats() {
   const [loading, setLoading] = useState(true);
   const [name, setName] = useState('');
   const [parentId, setParentId] = useState('');
+  const [nightRouteType, setNightRouteType] = useState<TechnicianType>('normal');
   const [adding, setAdding] = useState(false);
 
   const [editTarget, setEditTarget] = useState<Category | null>(null);
@@ -22,6 +28,7 @@ export default function Cats() {
 
   const [quickParent, setQuickParent] = useState<Category | null>(null);
   const [quickBusy, setQuickBusy] = useState(false);
+  const [routeSaving, setRouteSaving] = useState<string | null>(null);
 
   async function load() {
     setLoading(true);
@@ -39,7 +46,7 @@ export default function Cats() {
   const roots = useMemo(() => rows.filter((x) => !x.parentId), [rows]);
   const children = (id: string) => rows.filter((x) => String(x.parentId) === id);
 
-  async function createCategory(payload: { name: string; parentId: string | null }) {
+  async function createCategory(payload: { name: string; parentId: string | null; nightRouteType?: TechnicianType }) {
     const r = await fetch('/api/categories', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
@@ -61,13 +68,37 @@ export default function Cats() {
     }
     setAdding(true);
     try {
-      const ok = await createCategory({ name: trimmed, parentId: parentId || null });
+      const ok = await createCategory({
+        name: trimmed,
+        parentId: parentId || null,
+        ...(parentId ? {} : { nightRouteType }),
+      });
       if (!ok) return;
       toast.success('Kategori eklendi');
       setName('');
       load();
     } finally {
       setAdding(false);
+    }
+  }
+
+  async function setRootNightRoute(category: Category, value: TechnicianType) {
+    setRouteSaving(String(category._id));
+    try {
+      const r = await fetch('/api/categories', {
+        method: 'PUT',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ id: String(category._id), nightRouteType: value }),
+      });
+      if (!r.ok) {
+        const err = await r.json().catch(() => ({}));
+        toast.error('Güncellenemedi', err.error);
+      } else {
+        toast.success('Gece yönlendirmesi güncellendi');
+      }
+      load();
+    } finally {
+      setRouteSaving(null);
     }
   }
 
@@ -163,6 +194,25 @@ export default function Cats() {
             ))}
           </select>
         </label>
+        {!parentId && (
+          <label>
+            Gece / Hafta Sonu Nöbet Yönlendirmesi
+            <select
+              value={nightRouteType}
+              onChange={(e) => setNightRouteType(e.target.value as TechnicianType)}
+            >
+              {Object.entries(nightRouteLabels).map(([k, v]) => (
+                <option key={k} value={k}>
+                  {v}
+                </option>
+              ))}
+            </select>
+            <small className="muted">
+              Mesai dışında bu kategoride kritik işaretlenen bir arıza hangi tip nöbetçiye
+              gitsin. Alt kategoriler bu ayarı üst kategorisinden miras alır.
+            </small>
+          </label>
+        )}
         <button className="btn primary" onClick={add} disabled={adding}>
           {adding ? 'Ekleniyor…' : 'Kategori Ekle'}
         </button>
@@ -182,6 +232,19 @@ export default function Cats() {
               <div className="row cat-row cat-row-root">
                 <b>{root.name}</b>
                 <span className="row row-actions">
+                  <select
+                    value={root.nightRouteType || 'normal'}
+                    disabled={routeSaving === String(root._id)}
+                    onChange={(e) => setRootNightRoute(root, e.target.value as TechnicianType)}
+                    title="Gece/hafta sonu nöbet yönlendirmesi"
+                    style={{ fontSize: 12, padding: '4px 8px' }}
+                  >
+                    {Object.entries(nightRouteLabels).map(([k, v]) => (
+                      <option key={k} value={k}>
+                        {v}
+                      </option>
+                    ))}
+                  </select>
                   <button className="btn btn-sm" onClick={() => setQuickParent(root)}>
                     + Alt Kategori
                   </button>

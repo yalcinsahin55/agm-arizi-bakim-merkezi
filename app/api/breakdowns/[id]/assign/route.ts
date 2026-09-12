@@ -3,11 +3,10 @@ import { ObjectId } from 'mongodb';
 import { db } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
 import { createNotification } from '@/lib/notify';
-import { queueWhatsappMessage } from '@/lib/whatsapp-outbox';
+import { notifyTechnicianAssignment } from '@/lib/assign-technician';
 import { rateLimit, rateLimitResponse } from '@/lib/security';
 import { diffFields, writeAudit } from '@/lib/audit';
 import type { User } from '@/types';
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://agm-arizi-bakim-merkezi-zsru.vercel.app';
 export async function POST(req: Request, { params }: {
     params: Promise<{
         id: string;
@@ -55,13 +54,10 @@ export async function POST(req: Request, { params }: {
         return NextResponse.json({ error: 'Kayıt başka bir işlemle değişti, sayfayı yenileyin' }, { status: 409 });
     const ev = `assigned:${id}:${Date.now()}`;
     await writeAudit(d, { breakdownId: bid, eventId: ev, type: 'assigned', actorId: u._id, actorName: u.name, technicianId, technicianName: String(tech.name), previousTechnicianId: oldTech || null, fieldChanges: diffFields(b, { ...b, assignedTechnicianId: technicianId, assignedTechnicianName: String(tech.name), status: 'atandi' }, ['assignedTechnicianId', 'assignedTechnicianName', 'status']), createdAt: now });
-    await createNotification({ recipientId: technicianId, breakdownId: id, eventId: ev, title: 'Yeni arıza atandı', body: `${b.code} • ${b.motorName} • ${b.categoryName}`, href: `/arizalar/${id}` });
     if (oldTech && oldTech !== technicianId) {
         await createNotification({ recipientId: oldTech, breakdownId: id, eventId: `${ev}:old`, title: 'Arıza başka teknisyene aktarıldı', body: `${b.code} artık ${tech.name} teknisyenine atandı.`, href: `/arizalar/${id}` });
     }
-    const waPhone = String(tech.phoneNumber || '');
-    if (waPhone && tech.whatsappEnabled !== false) {
-                await queueWhatsappMessage(waPhone, `🔧 GÖREV ATANDI ${b.code} | Motor: ${b.motorName} | ${b.categoryName} | Öncelik: ${b.priority}\n🔗 İş emri: ${APP_URL}/arizalar/${id}`, 'breakdown_assigned');
-    }
+    // Yeni teknisyene push bildirimi + (varsa) WhatsApp mesajı tek çağrıda gönderilir.
+    await notifyTechnicianAssignment(tech, { _id: id, code: b.code, motorName: b.motorName, categoryName: b.categoryName, priority: b.priority }, ev);
     return NextResponse.json({ ok: true });
 }

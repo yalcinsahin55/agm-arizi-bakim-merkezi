@@ -13,6 +13,7 @@ export default function ManagerActions({ breakdown }: { breakdown: Breakdown }) 
   const toast = useToast();
   const [techs, setTechs] = useState<Technician[]>([]);
   const [techId, setTechId] = useState('');
+  const [dutyThisWeek, setDutyThisWeek] = useState<{ elektromekanikId: string | null; elektromekanikName: string | null; normalId: string | null; normalName: string | null }>({ elektromekanikId: null, elektromekanikName: null, normalId: null, normalName: null });
   const [revisionNote, setRevisionNote] = useState('');
   const [busy, setBusy] = useState(false);
 
@@ -21,6 +22,18 @@ export default function ManagerActions({ breakdown }: { breakdown: Breakdown }) 
       .then((x) => (x.ok ? x.json() : []))
       .then(setTechs)
       .catch(() => setTechs([]));
+    fetch('/api/duty')
+      .then((x) => (x.ok ? x.json() : null))
+      .then((j) => {
+        const current = j?.current;
+        setDutyThisWeek({
+          elektromekanikId: current?.elektromekanik?.id || null,
+          elektromekanikName: current?.elektromekanik?.name || null,
+          normalId: current?.normal?.id || null,
+          normalName: current?.normal?.name || null,
+        });
+      })
+      .catch(() => setDutyThisWeek({ elektromekanikId: null, elektromekanikName: null, normalId: null, normalName: null }));
   }, []);
 
   async function act(action: string, extra: Record<string, unknown> = {}) {
@@ -130,13 +143,31 @@ export default function ManagerActions({ breakdown }: { breakdown: Breakdown }) 
         Teknisyen Ata
         <select value={techId} onChange={(e) => setTechId(e.target.value)}>
           <option value="">Teknisyen seçiniz</option>
-          {techs.map((t) => (
-            <option key={String(t._id)} value={String(t._id)}>
-              {t.name}
-            </option>
-          ))}
+          {techs.map((t) => {
+            const isElektromekanikDuty = String(t._id) === dutyThisWeek.elektromekanikId;
+            const isNormalDuty = String(t._id) === dutyThisWeek.normalId;
+            return (
+              <option key={String(t._id)} value={String(t._id)}>
+                {t.name}
+                {isElektromekanikDuty ? ' (Bu Hafta Elektromekanik Nöbetçi)' : ''}
+                {isNormalDuty ? ' (Bu Hafta Normal Nöbetçi)' : ''}
+              </option>
+            );
+          })}
         </select>
       </label>
+      <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
+        {dutyThisWeek.elektromekanikId && techId !== dutyThisWeek.elektromekanikId && (
+          <button type="button" className="btn btn-sm" onClick={() => setTechId(dutyThisWeek.elektromekanikId!)}>
+            Elektromekanik nöbetçiyi seç ({dutyThisWeek.elektromekanikName})
+          </button>
+        )}
+        {dutyThisWeek.normalId && techId !== dutyThisWeek.normalId && (
+          <button type="button" className="btn btn-sm" onClick={() => setTechId(dutyThisWeek.normalId!)}>
+            Normal nöbetçiyi seç ({dutyThisWeek.normalName})
+          </button>
+        )}
+      </div>
       <button disabled={busy || !techId} className="btn primary" onClick={assign}>
         {breakdown.assignedTechnicianId ? 'Yeniden Ata' : 'Teknisyene Ata'}
       </button>

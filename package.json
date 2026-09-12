@@ -1,6 +1,6 @@
 {
   "name": "agm-arizi-bakim-merkezi",
-  "version": "4.9.8",
+  "version": "4.9.7",
   "private": true,
   "scripts": {
     "dev": "next dev",

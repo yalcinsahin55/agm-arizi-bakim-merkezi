@@ -25,12 +25,14 @@ export default function AuditPage() {
         name: string;
     }[]>([]);
     const [loading, setLoading] = useState(true);
+    const [loadingMore, setLoadingMore] = useState(false);
+    const [hasMore, setHasMore] = useState(false);
+    const [nextBefore, setNextBefore] = useState<string | null>(null);
     const [from, setFrom] = useState('');
     const [to, setTo] = useState('');
     const [type, setType] = useState('');
     const [actorId, setActorId] = useState('');
-    async function load() {
-        setLoading(true);
+    function buildQuery(before?: string | null) {
         const q = new URLSearchParams();
         if (from)
             q.set('from', from);
@@ -40,12 +42,30 @@ export default function AuditPage() {
             q.set('type', type);
         if (actorId)
             q.set('actorId', actorId);
-        const r = await fetch(`/api/audit?${q}`);
+        if (before)
+            q.set('before', before);
+        return q;
+    }
+    async function load() {
+        setLoading(true);
+        const r = await fetch(`/api/audit?${buildQuery()}`);
         const j = await r.json();
         setEvents(j.events || []);
         setTypes(j.types || []);
         setActors(j.actors || []);
+        setHasMore(!!j.hasMore);
+        setNextBefore(j.nextBefore || null);
         setLoading(false);
+    }
+    async function loadMore() {
+        if (!nextBefore) return;
+        setLoadingMore(true);
+        const r = await fetch(`/api/audit?${buildQuery(nextBefore)}`);
+        const j = await r.json();
+        setEvents((prev) => [...prev, ...(j.events || [])]);
+        setHasMore(!!j.hasMore);
+        setNextBefore(j.nextBefore || null);
+        setLoadingMore(false);
     }
     // Bilinçli olarak yalnızca ilk yüklemede çalışır; filtre değiştiğinde
     // yeniden veri çekme işi "Filtrele"/"Yenile" butonlarına bırakılmıştır.
@@ -53,6 +73,8 @@ export default function AuditPage() {
     useEffect(() => { queueMicrotask(load); }, []);
     return <section><div className="page-head"><div><h1>Denetim Günlüğü</h1><p>Arızi bakım üzerinde yapılan kritik işlemlerin değiştirilemez olay kaydı.</p></div><div style={{ display: 'flex', gap: 8 }}><button className="btn" onClick={load}>Yenile</button><a className="btn" href={`/api/audit?format=csv${from ? `&from=${from}` : ''}${to ? `&to=${to}` : ''}${type ? `&type=${encodeURIComponent(type)}` : ''}${actorId ? `&actorId=${encodeURIComponent(actorId)}` : ''}`}>CSV Dışa Aktar</a></div></div>
  <div className="card filters"><input type="date" value={from} onChange={e => setFrom(e.target.value)}/><input type="date" value={to} onChange={e => setTo(e.target.value)}/><select value={type} onChange={e => setType(e.target.value)}><option value="">Tüm işlemler</option>{types.map(x => <option key={x} value={x}>{labels[x] || x}</option>)}</select><select value={actorId} onChange={e => setActorId(e.target.value)}><option value="">Tüm kullanıcılar</option>{actors.map(x => <option key={x.id} value={x.id}>{x.name}</option>)}</select><button className="btn primary" onClick={load}>Filtrele</button></div>
- <div className="card table-wrap"><table><thead><tr><th>Tarih</th><th>İşlem</th><th>Arıza</th><th>Motor</th><th>Kullanıcı</th><th>Değişiklik</th><th>Not</th></tr></thead><tbody>{loading ? <tr><td colSpan={7}>Yükleniyor…</td></tr> : events.length === 0 ? <tr><td colSpan={7}>Kayıt bulunamadı.</td></tr> : events.map(e => <tr key={e._id}><td>{new Date(e.createdAt).toLocaleString('tr-TR')}</td><td><b>{labels[e.type] || e.type}</b></td><td><Link href={`/arizalar/${e.breakdownId}`}>{e.breakdownCode || e.breakdownId.slice(-8)}</Link></td><td>{e.motorName || '—'}</td><td>{e.actorName}</td><td>{e.fieldChanges && Object.keys(e.fieldChanges).length ? Object.entries(e.fieldChanges).map(([k, v]) => <div key={k}><b>{k}</b>: {String(v.from ?? '—')} → {String(v.to ?? '—')}</div>) : '—'}</td><td>{e.note || '—'}</td></tr>)}</tbody></table></div></section>;
+ <div className="card table-wrap"><table><thead><tr><th>Tarih</th><th>İşlem</th><th>Arıza</th><th>Motor</th><th>Kullanıcı</th><th>Değişiklik</th><th>Not</th></tr></thead><tbody>{loading ? <tr><td colSpan={7}>Yükleniyor…</td></tr> : events.length === 0 ? <tr><td colSpan={7}>Kayıt bulunamadı.</td></tr> : events.map(e => <tr key={e._id}><td>{new Date(e.createdAt).toLocaleString('tr-TR')}</td><td><b>{labels[e.type] || e.type}</b></td><td><Link href={`/arizalar/${e.breakdownId}`}>{e.breakdownCode || e.breakdownId.slice(-8)}</Link></td><td>{e.motorName || '—'}</td><td>{e.actorName}</td><td>{e.fieldChanges && Object.keys(e.fieldChanges).length ? Object.entries(e.fieldChanges).map(([k, v]) => <div key={k}><b>{k}</b>: {String(v.from ?? '—')} → {String(v.to ?? '—')}</div>) : '—'}</td><td>{e.note || '—'}</td></tr>)}</tbody></table>
+ {!loading && hasMore && <div style={{ padding: 14, textAlign: 'center' }}><button className="btn" onClick={loadMore} disabled={loadingMore}>{loadingMore ? 'Yükleniyor…' : 'Daha Fazla Yükle'}</button></div>}
+ </div></section>;
 }
 

@@ -48,6 +48,8 @@ export async function indexes() {
         database.collection('rate_limits').createIndex({ windowStart: 1 }, { expireAfterSeconds: 120 }),
         database.collection('sessions').createIndex({ userId: 1, lastSeenAt: -1 }),
         database.collection('sessions').createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 }),
+        database.collection('categories').createIndex({ active: 1, parentId: 1 }),
+        database.collection('duty_roster').createIndex({ weekStart: 1 }, { unique: true }),
     ]);
 }
 

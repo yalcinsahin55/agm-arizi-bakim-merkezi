@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { retryFailedNotifications, escalateUnresponsiveBreakdowns } from '@/lib/notify';
+import { retryFailedNotifications, escalateUnresponsiveBreakdowns, checkWeeklyDutyRoster } from '@/lib/notify';
 
 export const dynamic = 'force-dynamic';
 
@@ -16,15 +16,17 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const [retriedNotifications, escalatedBreakdowns] = await Promise.all([
+    const [retriedNotifications, escalatedBreakdowns, dutyReminderSent] = await Promise.all([
       retryFailedNotifications(),
       escalateUnresponsiveBreakdowns(),
+      checkWeeklyDutyRoster(),
     ]);
 
     return NextResponse.json({
       ok: true,
       retriedNotifications,
       escalatedBreakdowns,
+      dutyReminderSent,
       executedAt: new Date().toISOString(),
     });
   } catch (error: unknown) {

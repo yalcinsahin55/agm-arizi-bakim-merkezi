@@ -1,6 +1,8 @@
 import { redirect } from 'next/navigation';
 import { getCurrentUser } from '@/lib/auth';
 import ChangePasswordForm from '@/components/profile/ChangePasswordForm';
+import NotificationPreferences from '@/components/profile/NotificationPreferences';
+import PushSetup from '@/components/PushSetup';
 
 const roleLabel: Record<string, string> = {
   yonetici: 'Yönetici',
@@ -39,6 +41,20 @@ export default async function ProfilePage() {
             </div>
             <b>{roleLabel[u.role] || u.role}</b>
           </div>
+        </div>
+      </div>
+
+      <div className="card" style={{ marginTop: 16 }}>
+        <h2>Bildirim Tercihleri</h2>
+        <p className="muted">
+          Arıza bildirimlerini hangi kanallardan almak istediğinizi buradan yönetebilirsiniz.
+        </p>
+        <NotificationPreferences
+          initialWhatsappEnabled={u.whatsappEnabled !== false}
+          hasPhone={!!u.phoneNumber}
+        />
+        <div style={{ marginTop: 4 }}>
+          <PushSetup compact />
         </div>
       </div>
 

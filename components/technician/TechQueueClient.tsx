@@ -1,9 +1,10 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { priorityLabel, relativeTime, statusLabel } from '@/lib/labels';
+import { useVisibleInterval } from '@/lib/use-visible-interval';
 
 type Job = {
   _id: string;
@@ -29,9 +30,8 @@ export default function TechQueueClient({ initialRows }: { initialRows: Job[] })
     setRows(initialRows);
   }
 
-  useEffect(() => {
-    if (!live) return;
-    const tick = async () => {
+  useVisibleInterval(
+    async () => {
       try {
         const r = await fetch('/api/breakdowns', { cache: 'no-store' });
         if (!r.ok) return;
@@ -43,10 +43,10 @@ export default function TechQueueClient({ initialRows }: { initialRows: Job[] })
       } catch {
         /* ignore */
       }
-    };
-    const id = setInterval(tick, 20000);
-    return () => clearInterval(id);
-  }, [live]);
+    },
+    20000,
+    live,
+  );
 
   const unseen = rows.filter((x) => !x.seenAt).length;
   const working = rows.filter((x) => x.status === 'devam_ediyor').length;

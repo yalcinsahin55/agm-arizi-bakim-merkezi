@@ -32,6 +32,7 @@ import Providers from '@/components/Providers';
 import MobileNav from '@/components/MobileNav';
 import PwaRegister from '@/components/PwaRegister';
 import Logo from '@/components/Logo';
+import GlobalSearch from '@/components/GlobalSearch';
 
 export const metadata: Metadata = {
   title: 'Avcıkoru Santrali Arızi Bakım Merkezi',
@@ -92,6 +93,7 @@ export default async function Layout({ children }: { children: React.ReactNode }
               </Link>
               {u ? (
                 <div className="top-user">
+                  <GlobalSearch />
                   <Link href="/profil" className="account-btn" title="Hesabım" aria-label="Hesabım">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                       <circle cx="12" cy="8" r="3.4" />
@@ -128,6 +130,7 @@ export default async function Layout({ children }: { children: React.ReactNode }
                         <Link href="/motorlar">Ekipman Envanteri</Link>
                         <Link href="/yonetim/kategoriler">Kategoriler</Link>
                         <Link href="/yonetim/kullanicilar">Kullanıcılar</Link>
+                        <Link href="/yonetim/nobet">Nöbetçi Planı</Link>
                         <Link href="/yonetim/oturumlar">Aktif Oturumlar</Link>
                         <Link href="/yonetim/audit">Denetim Günlüğü</Link>
                       </>

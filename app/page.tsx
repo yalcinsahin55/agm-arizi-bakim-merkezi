@@ -8,13 +8,17 @@ import TechnicianWorkload from '@/components/dashboard/TechnicianWorkload';
 import TrendBars from '@/components/dashboard/TrendBars';
 import type { Breakdown, User } from '@/types';
 import Logo from '@/components/Logo';
-import LiveClock from '@/components/LiveClock';
+import { turkeyWeekStart } from '@/lib/tz';
 
 const activeStatuses = ['acik', 'atandi', 'devam_ediyor', 'revizyon'] as const;
 function startOfDay(d: Date) {
   const x = new Date(d);
   x.setHours(0, 0, 0, 0);
   return x;
+}
+
+function daysAgo(days: number): Date {
+  return new Date(Date.now() - days * 24 * 60 * 60 * 1000);
 }
 
 function buildDayBuckets(days: number, all: Breakdown[]) {
@@ -92,9 +96,7 @@ export default async function Home() {
         : { createdBy: u._id }),
   };
 
-  // Sunucu anlık tarih penceresi (render-time snapshot)
-  const since14 = new Date();
-  since14.setUTCDate(since14.getUTCDate() - 14);
+  const since14 = daysAgo(14);
   const isManager = u.role === 'yonetici';
 
   // Tek turda KPI + trend + recent (1000 doküman + N+1 teknisyen sorgusu yok)
@@ -197,6 +199,10 @@ export default async function Home() {
     d.collection('motors').countDocuments({ active: true }),
   ]);
 
+  const currentWeekStart = turkeyWeekStart();
+  const thisWeekDuty = await d.collection('duty_roster').findOne({ weekStart: currentWeekStart });
+  const dutyIncomplete = !thisWeekDuty?.elektromekanikTechnicianId || !thisWeekDuty?.normalTechnicianId;
+
   const facet = facetRows[0] || {
     open: [],
     critical: [],
@@ -284,19 +290,17 @@ export default async function Home() {
     <>
       <section className="hero-banner">
         <div className="hero-left">
-          <Logo size={48} className="hero-logo" />
+          <Logo size={40} className="hero-logo" />
           <div style={{ minWidth: 0 }}>
             <div className="eyebrow">AVCIKORU SANTRALİ</div>
-            <h2 className="hero-greet">
-              {greet}, <span className="hero-name">{String(u.name).split(' ')[0]}</span>
+            <h2>
+              {greet}, {String(u.name).split(' ')[0]}
             </h2>
-            <div className="hero-role">{roleMsg}</div>
-            <div className="hero-meta">
-              <span className="hero-meta-item">{motorCount} motor</span>
-              <span className="hero-meta-sep">·</span>
-              <span className="hero-meta-item">{todayLabel}</span>
-              <span className="hero-meta-sep">·</span>
-              <LiveClock className="hero-clock" />
+            <div className="muted" style={{ fontSize: 13 }}>
+              {roleMsg}
+            </div>
+            <div className="muted" style={{ marginTop: 6, fontSize: 12 }}>
+              {motorCount} motor · {todayLabel}
             </div>
           </div>
         </div>
@@ -318,6 +322,21 @@ export default async function Home() {
         </div>
         <div className="row">
           <span className="badge">{u.name}</span>
+          {thisWeekDuty?.elektromekanikTechnicianName && (
+            <span className="badge" title="Bu haftanın elektromekanik nöbetçisi">
+              🛠 EM Nöbetçi: {thisWeekDuty.elektromekanikTechnicianName}
+            </span>
+          )}
+          {thisWeekDuty?.normalTechnicianName && (
+            <span className="badge" title="Bu haftanın normal nöbetçisi">
+              🛠 Nöbetçi: {thisWeekDuty.normalTechnicianName}
+            </span>
+          )}
+          {u.role === 'yonetici' && dutyIncomplete && (
+            <Link className="badge duty-missing-badge" href="/yonetim/nobet" title="Bu hafta nöbet planı eksik">
+              ⚠ Nöbet planlanmadı
+            </Link>
+          )}
           {(u.role === 'yonetici' || u.role === 'operator') && (
             <Link className="btn primary" href="/arizalar/yeni">
               + Yeni Arıza

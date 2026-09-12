@@ -50,13 +50,30 @@ export async function GET(req: Request) {
     }
   }
 
+  const isExport = params.get('format') === 'csv';
+  // Sayfa listesi için küçük, hızlı sayfalar (varsayılan 200) çekilir; "before"
+  // imleciyle bir önceki sayfanın en eski kaydından geriye doğru devam edilir.
+  // CSV dışa aktarma ise kullanıcının bilinçli tek seferlik isteğidir, daha
+  // yüksek bir tavanla (5000) tüm aralığı döner.
+  const pageLimit = Math.min(Math.max(Number(params.get('limit')) || 200, 1), 500);
+  const limit = isExport ? 5000 : pageLimit;
+  const before = params.get('before');
+  if (before) {
+    const beforeDate = new Date(before);
+    if (!Number.isNaN(beforeDate.getTime())) {
+      query.createdAt = { ...(query.createdAt as object), $lt: beforeDate };
+    }
+  }
+
   const database = await db();
   const rows = await database
     .collection<AuditEventDocument>('breakdown_events')
     .find(query)
     .sort({ createdAt: -1 })
-    .limit(2000)
+    .limit(limit + 1)
     .toArray();
+  const hasMore = !isExport && rows.length > limit;
+  if (hasMore) rows.length = limit;
 
   const breakdownIds = rows
     .map((row) => row.breakdownId)
@@ -121,6 +138,8 @@ export async function GET(req: Request) {
     types,
     actors,
     count: events.length,
+    hasMore,
+    nextBefore: hasMore ? events[events.length - 1]?.createdAt : null,
     breakdownIds: [...new Set(rows.map((row) => String(row.breakdownId)).filter(Boolean))],
   });
 }

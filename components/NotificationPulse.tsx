@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useVisibleInterval } from '@/lib/use-visible-interval';
 
 type Notif = {
   _id: string;
@@ -39,41 +40,41 @@ export default function NotificationPulse() {
   const first = useRef(true);
   const router = useRouter();
 
-  useEffect(() => {
-    async function poll() {
-      try {
-        const r = await fetch('/api/notifications', { cache: 'no-store' });
-        if (!r.ok) return;
-        const data = await r.json();
-        const list: Notif[] = Array.isArray(data) ? data : data.items || [];
-        const map = seen.current;
-        if (first.current) {
-          for (const n of list) map[String(n._id)] = Date.now();
-          saveSeen(map);
-          first.current = false;
-          return;
-        }
-        const fresh = list.filter((n) => !n.read && !map[String(n._id)]);
-        if (fresh.length) {
-          for (const n of fresh) map[String(n._id)] = Date.now();
-          saveSeen(map);
-          const show = fresh.slice(0, 3);
-          setToasts((t) => [...show, ...t].slice(0, 4));
-          for (const n of show) {
-            setTimeout(
-              () => setToasts((t) => t.filter((x) => String(x._id) !== String(n._id))),
-              9000,
-            );
-          }
-        }
-      } catch {
-        /* ignore */
+  const poll = useRef(async () => {
+    try {
+      const r = await fetch('/api/notifications', { cache: 'no-store' });
+      if (!r.ok) return;
+      const data = await r.json();
+      const list: Notif[] = Array.isArray(data) ? data : data.items || [];
+      const map = seen.current;
+      if (first.current) {
+        for (const n of list) map[String(n._id)] = Date.now();
+        saveSeen(map);
+        first.current = false;
+        return;
       }
+      const fresh = list.filter((n) => !n.read && !map[String(n._id)]);
+      if (fresh.length) {
+        for (const n of fresh) map[String(n._id)] = Date.now();
+        saveSeen(map);
+        const show = fresh.slice(0, 3);
+        setToasts((t) => [...show, ...t].slice(0, 4));
+        for (const n of show) {
+          setTimeout(
+            () => setToasts((t) => t.filter((x) => String(x._id) !== String(n._id))),
+            9000,
+          );
+        }
+      }
+    } catch {
+      /* ignore */
     }
-    poll();
-    const id = setInterval(poll, 10000);
-    return () => clearInterval(id);
+  });
+
+  useEffect(() => {
+    poll.current();
   }, []);
+  useVisibleInterval(() => poll.current(), 10000);
 
   if (!toasts.length) return null;
 

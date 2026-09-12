@@ -3,6 +3,12 @@ import { ObjectId } from 'mongodb';
 import { db } from '@/lib/db';
 import { rateLimit, rateLimitResponse } from '@/lib/security';
 import { getCurrentUser } from '@/lib/auth';
+
+const NIGHT_ROUTE_TYPES = ['elektromekanik', 'normal'];
+function parseNightRouteType(value: unknown): 'elektromekanik' | 'normal' | undefined {
+    return NIGHT_ROUTE_TYPES.includes(String(value)) ? (value as 'elektromekanik' | 'normal') : undefined;
+}
+
 export async function GET() {
     const u = await getCurrentUser();
     if (!u)
@@ -34,7 +40,10 @@ export async function POST(req: Request) {
         if (!p)
             return NextResponse.json({ error: 'Üst kategori bulunamadı' }, { status: 400 });
     }
-    const r = await d.collection('categories').insertOne({ name, active: true, parentId, createdAt: new Date() });
+    // Gece nöbet yönlendirmesi yalnızca ana (kök) kategorilerde anlamlıdır;
+    // alt kategoriler üst kategorisinden miras alır.
+    const nightRouteType = !parentId ? (parseNightRouteType(body.nightRouteType) || 'normal') : undefined;
+    const r = await d.collection('categories').insertOne({ name, active: true, parentId, ...(nightRouteType ? { nightRouteType } : {}), createdAt: new Date() });
     return NextResponse.json({ _id: r.insertedId }, { status: 201 });
 }
 export async function PUT(req: Request) {
@@ -42,11 +51,20 @@ export async function PUT(req: Request) {
     if (!u || u.role !== 'yonetici')
         return NextResponse.json({ error: 'Yetkisiz' }, { status: 403 });
     const body = await req.json();
-    if (!body.id || !String(body.name || '').trim())
+    if (!body.id)
         return NextResponse.json({ error: 'Geçersiz kategori' }, { status: 400 });
+    const set: Record<string, unknown> = { updatedAt: new Date() };
+    if (body.name !== undefined) {
+        if (!String(body.name).trim())
+            return NextResponse.json({ error: 'Geçersiz kategori' }, { status: 400 });
+        set.name = String(body.name).trim();
+    }
+    const nightRouteType = parseNightRouteType(body.nightRouteType);
+    if (nightRouteType)
+        set.nightRouteType = nightRouteType;
     try {
         const d = await db();
-        const r = await d.collection('categories').updateOne({ _id: new ObjectId(body.id) }, { $set: { name: String(body.name).trim(), updatedAt: new Date() } });
+        const r = await d.collection('categories').updateOne({ _id: new ObjectId(body.id) }, { $set: set });
         if (!r.matchedCount)
             return NextResponse.json({ error: 'Kategori bulunamadı' }, { status: 404 });
         return NextResponse.json({ ok: true });

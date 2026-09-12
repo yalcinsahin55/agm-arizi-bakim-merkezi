@@ -10,6 +10,7 @@ export type EquipmentType =
   | 'jenerator'
   | 'alternator'
   | 'diger';
+export type TechnicianType = 'elektromekanik' | 'normal';
 export interface User {
     _id: string;
     name: string;
@@ -19,6 +20,14 @@ export interface User {
     phoneNumber?: string;
     whatsappEnabled?: boolean;
     passwordHash?: string;
+    /** Yalnızca role === 'teknisyen' için anlamlıdır; nöbet ataması bu alana göre yapılır. */
+    technicianType?: TechnicianType;
+    /**
+     * Yalnızca teknisyenler için: nöbetçi olduğunda (evden yola çıkma vb.)
+     * yol/ulaşma süresi nedeniyle yanıt/işe başlama süresi hesaplamalarına
+     * dahil edilmeyecek dakika sayısı. Yönetici kullanıcı eklerken/düzenlerken belirler.
+     */
+    dutyTravelBufferMinutes?: number;
 }
 export interface Motor {
     _id: string;
@@ -41,6 +50,22 @@ export interface Category {
     name: string;
     active: boolean;
     parentId?: string | null;
+    /**
+     * Sadece ana (kök) kategorilerde anlamlıdır: gece nöbeti penceresinde
+     * (20:00-06:00) bu kategoride açılan arızanın hangi tip nöbetçi
+     * teknisyene otomatik gideceğini belirler. Alt kategoriler üst
+     * kategorisinden miras alır. Belirtilmemişse 'normal' kabul edilir.
+     */
+    nightRouteType?: TechnicianType;
+}
+export interface DutyWeekEntry {
+    id: string;
+    name: string;
+}
+export interface DutyWeek {
+    weekStart: string;
+    elektromekanik: DutyWeekEntry | null;
+    normal: DutyWeekEntry | null;
 }
 export interface Breakdown {
     _id: string;
@@ -83,6 +108,21 @@ export interface Breakdown {
     createdAt: string;
     updatedAt?: string;
     escalationLevel?: number;
+    /** Arıza mesai dışı (hafta içi 20:00-06:00, veya Cmt/Paz tamamı) mı açıldı. */
+    openedOffHours?: boolean;
+    /**
+     * Mesai dışı açılırken arızayı açan kişinin işaretlediği "kritik, üretim
+     * kaybı yaşanabilir" seçeneği. true ise nöbetçi teknisyene anında
+     * otomatik atama denenir; false/undefined ise kayıt yönetici gündüz
+     * manuel atayana kadar bekler.
+     */
+    criticalDispatch?: boolean;
+    /**
+     * Otomatik nöbet ataması yapıldıysa, atanan teknisyenin o andaki
+     * dutyTravelBufferMinutes değerinin anlık görüntüsü. Yanıt/işe başlama
+     * süresi hesaplamalarında bu kadar dakika mahsup edilir.
+     */
+    assignedTravelBufferMinutes?: number;
 }
 export interface BreakdownEvent {
     _id?: string;
@@ -128,15 +168,24 @@ export interface Attachment {
 }
 
 
+export interface ReportTiming {
+  count: number;
+  avgMttr: number | null;
+  avgResponse: number | null;
+  avgIntervention: number | null;
+}
 export interface ReportStats {
   total: number;
   critical: number;
   closed: number;
   waiting: number;
   active: number;
+  /** Normal mesai saatlerinde açılan kayıtlara göre (mesai dışı hariç). */
   avgMttr: number | null;
   avgResponse: number | null;
   avgIntervention: number | null;
+  /** Mesai dışı (hafta içi 20:00-06:00 veya Cmt/Paz) açılıp nöbetçiye giden kayıtlar; ulaşım süresi mahsup edilmiştir. */
+  offHours: ReportTiming;
 }
 
 export interface ReportGroup {
@@ -169,6 +218,13 @@ export interface ReportRow extends Record<string, unknown> {
   startedAt?: string | Date | null;
   submittedAt?: string | Date | null;
   closedAt?: string | Date | null;
+  openedOffHours?: boolean;
+  assignedTravelBufferMinutes?: number;
+}
+
+export interface CategorySla extends ReportGroup {
+  avgResponseMinutes: number | null;
+  avgResolutionMinutes: number | null;
 }
 
 export interface ReportPayload {
@@ -178,6 +234,7 @@ export interface ReportPayload {
   rootCauses: ReportGroup[];
   byMotor: ReportGroup[];
   byCategory: ReportGroup[];
+  categorySla: CategorySla[];
   byTechnician: ReportGroup[];
   predictive: PredictiveReport[];
   rows: ReportRow[];

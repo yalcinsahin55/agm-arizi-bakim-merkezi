@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useToast } from '@/components/ui/Toaster';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
-import type { Role, User } from '@/types';
+import type { Role, TechnicianType, User } from '@/types';
 
 const labels: Record<string, string> = {
   yonetici: 'Yönetici',
@@ -12,12 +12,20 @@ const labels: Record<string, string> = {
   goruntuleyici: 'Üst Düzey / Görüntüleyici',
 };
 
+const technicianTypeLabels: Record<TechnicianType, string> = {
+  elektromekanik: 'Elektromekanik',
+  normal: 'Normal',
+};
+
+const travelBufferOptions = [0, 30, 60, 90, 120];
+const travelBufferLabel = (v: number) => (v === 0 ? 'Ek süre yok' : `${v} dakika`);
+
 export default function Users() {
   const toast = useToast();
   const [rows, setRows] = useState<User[]>([]);
-  const [form, setForm] = useState<{ name: string; phone: string; password: string; role: Role }>({ name: '', phone: '', password: '', role: 'goruntuleyici' });
+  const [form, setForm] = useState<{ name: string; phone: string; password: string; role: Role; technicianType: TechnicianType; dutyTravelBufferMinutes: number }>({ name: '', phone: '', password: '', role: 'goruntuleyici', technicianType: 'normal', dutyTravelBufferMinutes: 0 });
   const [editId, setEditId] = useState<string | null>(null);
-  const [ef, setEf] = useState<{ name: string; phone: string; role: Role }>({ name: '', phone: '', role: 'goruntuleyici' });
+  const [ef, setEf] = useState<{ name: string; phone: string; role: Role; technicianType: TechnicianType; dutyTravelBufferMinutes: number }>({ name: '', phone: '', role: 'goruntuleyici', technicianType: 'normal', dutyTravelBufferMinutes: 0 });
   const [resetId, setResetId] = useState<string | null>(null);
   const [resetPassword, setResetPassword] = useState('');
   const [resetConfirm, setResetConfirm] = useState('');
@@ -45,7 +53,7 @@ export default function Users() {
       return;
     }
     toast.success('Kullanıcı oluşturuldu');
-    setForm({ name: '', phone: '', password: '', role: 'goruntuleyici' });
+    setForm({ name: '', phone: '', password: '', role: 'goruntuleyici', technicianType: 'normal', dutyTravelBufferMinutes: 0 });
     load();
   }
 
@@ -93,11 +101,17 @@ export default function Users() {
       name: x.name || '',
       phone: x.phoneNumber || '',
       role: x.role || 'goruntuleyici',
+      technicianType: x.technicianType || 'normal',
+      dutyTravelBufferMinutes: x.dutyTravelBufferMinutes ?? 0,
     });
   }
 
   async function saveEdit(id: string) {
-    const body: { id: string; name?: string; phone?: string; role?: Role } = { id, name: ef.name, phone: ef.phone, role: ef.role };
+    const body: { id: string; name?: string; phone?: string; role?: Role; technicianType?: TechnicianType; dutyTravelBufferMinutes?: number } = { id, name: ef.name, phone: ef.phone, role: ef.role };
+    if (ef.role === 'teknisyen') {
+      body.technicianType = ef.technicianType;
+      body.dutyTravelBufferMinutes = ef.dutyTravelBufferMinutes;
+    }
     const r = await fetch('/api/users', {
       method: 'PATCH',
       headers: { 'content-type': 'application/json' },
@@ -184,6 +198,43 @@ export default function Users() {
             </option>
           ))}
         </select>
+        {form.role === 'teknisyen' && (
+          <label>
+            Teknisyen Tipi
+            <select
+              value={form.technicianType}
+              onChange={(e) => setForm({ ...form, technicianType: e.target.value as TechnicianType })}
+            >
+              {Object.entries(technicianTypeLabels).map(([k, v]) => (
+                <option key={k} value={k}>
+                  {v}
+                </option>
+              ))}
+            </select>
+            <small className="muted">
+              Nöbetçi planında elektromekanik ve normal teknisyenler ayrı ayrı seçilir.
+            </small>
+          </label>
+        )}
+        {form.role === 'teknisyen' && (
+          <label>
+            Nöbetçi Ulaşım Süresi
+            <select
+              value={form.dutyTravelBufferMinutes}
+              onChange={(e) => setForm({ ...form, dutyTravelBufferMinutes: Number(e.target.value) })}
+            >
+              {travelBufferOptions.map((v) => (
+                <option key={v} value={v}>
+                  {travelBufferLabel(v)}
+                </option>
+              ))}
+            </select>
+            <small className="muted">
+              Bu teknisyen mesai dışı nöbetçi olarak arızaya evinden çıkıyorsa, yanıt/işe başlama
+              süresi hesaplamalarında bu kadar dakika mahsup edilir.
+            </small>
+          </label>
+        )}
         <button className="btn primary" onClick={add}>
           Kullanıcı Oluştur
         </button>
@@ -196,7 +247,8 @@ export default function Users() {
               <div>
                 <b>{x.name}</b>
                 <div className="muted">
-                  {x.phoneNumber || 'Telefon yok'} · {labels[x.role] || x.role} ·{' '}
+                  {x.phoneNumber || 'Telefon yok'} · {labels[x.role] || x.role}
+                  {x.role === 'teknisyen' ? ` (${technicianTypeLabels[x.technicianType || 'normal']})` : ''} ·{' '}
                   {x.active ? 'Aktif' : 'Pasif'}
                   {x.whatsappEnabled === false ? ' · WhatsApp kapalı' : ''}
                 </div>
@@ -236,6 +288,30 @@ export default function Users() {
                     </option>
                   ))}
                 </select>
+                {ef.role === 'teknisyen' && (
+                  <select
+                    value={ef.technicianType}
+                    onChange={(e) => setEf({ ...ef, technicianType: e.target.value as TechnicianType })}
+                  >
+                    {Object.entries(technicianTypeLabels).map(([k, v]) => (
+                      <option key={k} value={k}>
+                        {v} teknisyen
+                      </option>
+                    ))}
+                  </select>
+                )}
+                {ef.role === 'teknisyen' && (
+                  <select
+                    value={ef.dutyTravelBufferMinutes}
+                    onChange={(e) => setEf({ ...ef, dutyTravelBufferMinutes: Number(e.target.value) })}
+                  >
+                    {travelBufferOptions.map((v) => (
+                      <option key={v} value={v}>
+                        Nöbetçi ulaşım süresi: {travelBufferLabel(v)}
+                      </option>
+                    ))}
+                  </select>
+                )}
                 <div style={{ display: 'flex', gap: 8 }}>
                   <button className="btn primary" onClick={() => saveEdit(String(x._id))}>
                     Kaydet

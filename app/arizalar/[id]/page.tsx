@@ -9,6 +9,8 @@ import TechnicalReport from '@/components/breakdown/TechnicalReport';
 import ResponseTracking from '@/components/breakdown/ResponseTracking';
 import EventTimeline from '@/components/breakdown/EventTimeline';
 import ShareActions from '@/components/breakdown/ShareActions';
+import RecurrenceBanner from '@/components/breakdown/RecurrenceBanner';
+import { classifyRecurrence, daysAgo, RECURRENCE_WINDOW_DAYS } from '@/lib/recurrence';
 import type { Breakdown, BreakdownEvent, Notification } from '@/types';
 
 export default async function Detail({
@@ -38,6 +40,17 @@ export default async function Detail({
     .find({ breakdownId: b._id })
     .sort({ createdAt: 1 })
     .toArray();
+
+  // Tekrarlayan arıza tespiti: aynı motor + aynı kategoride, bu kayıt hariç,
+  // son RECURRENCE_WINDOW_DAYS gün içinde kaç kayıt daha açılmış.
+  const recurrenceSince = daysAgo(RECURRENCE_WINDOW_DAYS);
+  const priorCount = await d.collection('breakdowns').countDocuments({
+    _id: { $ne: b._id },
+    motorId: b.motorId,
+    categoryId: b.categoryId,
+    createdAt: { $gte: recurrenceSince },
+  });
+  const recurrenceLevel = classifyRecurrence(priorCount);
   const notifications =
     u.role === 'yonetici'
       ? await d
@@ -79,6 +92,14 @@ export default async function Detail({
         </Link>
         <span className="badge">{b.status}</span>
         <span className={`badge priority-${b.priority}`}>{b.priority}</span>
+        {b.openedOffHours && (
+          <span
+            className="badge duty-missing-badge"
+            title="Mesai dışında (hafta içi 20:00-06:00 veya hafta sonu) açıldı"
+          >
+            🌙 Mesai Dışı{b.criticalDispatch ? ' · Nöbetçiye Otomatik Atandı' : ' · Manuel Bekliyor'}
+          </span>
+        )}
       </div>
       <h1 className="page-title" style={{ marginTop: 14 }}>
         {b.code} · {b.motorName}
@@ -88,6 +109,15 @@ export default async function Detail({
         {b.subcategoryName ? ` / ${b.subcategoryName}` : ''} · {b.title}
       </p>
       <ShareActions code={String(b.code)} title={String(b.title)} id={id} />
+      {recurrenceLevel && (
+        <RecurrenceBanner
+          level={recurrenceLevel}
+          priorCount={priorCount}
+          motorName={String(b.motorName)}
+          categoryLabel={String(b.categoryName)}
+          historyHref={`/arizalar?q=${encodeURIComponent(String(b.motorName))}`}
+        />
+      )}
       <div className="split" style={{ marginTop: 16 }}>
         <BreakdownSummary breakdown={breakdown} />
         <div className="card">

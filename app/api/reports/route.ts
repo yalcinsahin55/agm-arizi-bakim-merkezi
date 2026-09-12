@@ -2,7 +2,19 @@ import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import type { ReportRow } from '@/types';
 import { getCurrentUser } from '@/lib/auth';
-import { average, csvEscape, dateEnd, dateStart, minutesBetween } from '@/lib/report-utils';
+import { average, csvEscape, dateEnd, dateStart, type DateLike, minutesBetween } from '@/lib/report-utils';
+
+// Nöbetçi teknisyen mesai dışı evinden yola çıktığında, tanımlı ulaşım
+// süresi kadar dakika yanıt/çözüm sürelerinden mahsup edilir; böylece
+// nöbetçinin fiilen yoldaki süresi performansına haksız yansımaz.
+function bufferedMinutes(start: DateLike, end: DateLike, bufferMinutes: number): number | null {
+    const raw = minutesBetween(start, end);
+    if (raw === null) return null;
+    return Math.max(0, raw - bufferMinutes);
+}
+function isNum(v: number | null): v is number {
+    return v !== null;
+}
 import { buildReportPdf } from '@/lib/pdf-report';
 function groupBy(rows: ReportRow[], idField: string, nameField: string) {
     const map = new Map<string, {
@@ -59,24 +71,41 @@ export async function GET(req: Request) {
         .limit(5000)
         .toArray();
     const typedRows = rows as unknown as ReportRow[];
-    const mttrValues = typedRows
-        .map((row) => minutesBetween(row.startedAt, row.closedAt))
-        .filter((value): value is number => value !== null);
-    const responseValues = typedRows
-        .map((row) => minutesBetween(row.createdAt, row.seenAt))
-        .filter((value): value is number => value !== null);
-    const interventionValues = typedRows
-        .map((row) => minutesBetween(row.startedAt, row.submittedAt))
-        .filter((value): value is number => value !== null);
+    // Mesai dışı (hafta içi 20:00-06:00 veya Cmt/Paz) açılıp nöbetçiye giden
+    // kayıtların yanıt/çözüm süreleri, normal mesai kayıtlarından AYRI
+    // hesaplanır; aksi halde nöbetçinin yoldaki süresi genel ortalamayı
+    // haksız yere kötü gösterir.
+    const normalHourRows = typedRows.filter((row) => !row.openedOffHours);
+    const offHourRows = typedRows.filter((row) => row.openedOffHours);
+    function timingFor(group: ReportRow[]) {
+        const mttrValues = group
+            .map((row) => bufferedMinutes(row.startedAt, row.closedAt, Number(row.assignedTravelBufferMinutes || 0)))
+            .filter(isNum);
+        const responseValues = group
+            .map((row) => bufferedMinutes(row.createdAt, row.seenAt, Number(row.assignedTravelBufferMinutes || 0)))
+            .filter(isNum);
+        const interventionValues = group
+            .map((row) => minutesBetween(row.startedAt, row.submittedAt))
+            .filter(isNum);
+        return {
+            count: group.length,
+            avgMttr: average(mttrValues),
+            avgResponse: average(responseValues),
+            avgIntervention: average(interventionValues),
+        };
+    }
+    const normalTiming = timingFor(normalHourRows);
+    const offHoursTiming = timingFor(offHourRows);
     const stats = {
         total: rows.length,
         critical: rows.filter((row) => row.priority === 'kritik').length,
         closed: rows.filter((row) => row.status === 'onaylandi').length,
         waiting: rows.filter((row) => row.status === 'onay_bekliyor').length,
         active: rows.filter((row) => ['acik', 'atandi', 'devam_ediyor', 'revizyon'].includes(String(row.status))).length,
-        avgMttr: average(mttrValues),
-        avgResponse: average(responseValues),
-        avgIntervention: average(interventionValues),
+        avgMttr: normalTiming.avgMttr,
+        avgResponse: normalTiming.avgResponse,
+        avgIntervention: normalTiming.avgIntervention,
+        offHours: offHoursTiming,
     };
     const monthly = (() => {
         const map = new Map<string, number>();
@@ -105,6 +134,23 @@ export async function GET(req: Request) {
     const byMotor = groupBy(typedRows, 'motorId', 'motorName');
     const byCategory = groupBy(typedRows, 'categoryId', 'categoryName');
     const byTechnician = groupBy(typedRows, 'assignedTechnicianId', 'assignedTechnicianName');
+    // Kategori bazlı SLA: her kategori için ortalama ilk yanıt (createdAt->seenAt)
+    // ve ortalama çözüm (startedAt->closedAt) süresi. Yöneticinin hangi arıza
+    // türünde teknisyenlerin yavaş kaldığını görmesini sağlar.
+    const categorySla = byCategory.map((cat) => {
+        const catRows = typedRows.filter((row) => String(row.categoryId) === cat.id);
+        const response = catRows
+            .map((row) => minutesBetween(row.createdAt, row.seenAt))
+            .filter((v): v is number => v !== null);
+        const resolution = catRows
+            .map((row) => minutesBetween(row.startedAt, row.closedAt))
+            .filter((v): v is number => v !== null);
+        return {
+            ...cat,
+            avgResponseMinutes: average(response),
+            avgResolutionMinutes: average(resolution),
+        };
+    });
     const rootCauses = (() => {
         const map = new Map<string, number>();
         for (const row of typedRows) {
@@ -148,6 +194,7 @@ export async function GET(req: Request) {
         rootCauses,
         byMotor,
         byCategory,
+        categorySla,
         byTechnician,
         predictive,
         rows: rows.map((row) => ({

@@ -1,6 +1,7 @@
 import webpush from 'web-push';
 import type { ObjectId } from 'mongodb';
 import { db } from './db';
+import { isMondayInTurkey, turkeyWeekStart } from './tz';
 import type { Breakdown, User } from '@/types';
 export type NotificationInput = {
     recipientId: string;
@@ -301,7 +302,10 @@ export async function escalateUnresponsiveBreakdowns() {
         const seen = Boolean(breakdown.seenAt);
         const started = Boolean(breakdown.startedAt);
         const currentLevel = Number(breakdown.escalationLevel || 0);
-        if (minutes >= 15 && !seen && currentLevel < 1) {
+        // Mesai dışı nöbetçi ataması evden yola çıkmayı gerektirdiğinden,
+        // teknisyenin tanımlı ulaşım süresi kadar eskalasyon eşikleri ötelenir.
+        const travelBuffer = Number(breakdown.assignedTravelBufferMinutes || 0);
+        if (minutes >= 15 + travelBuffer && !seen && currentLevel < 1) {
             const eventId = await createSystemEvent(breakdown as unknown as Breakdown, 'escalation', 'Teknisyen 15 dakika içinde bildirimi görmedi.', 1);
             const result = await database.collection('breakdowns').updateOne({ _id: breakdown._id, escalationLevel: { $lt: 1 } }, { $set: { escalationLevel: 1, updatedAt: now } });
             if (result.modifiedCount) {
@@ -318,7 +322,7 @@ export async function escalateUnresponsiveBreakdowns() {
             }
             continue;
         }
-        if (minutes >= 30 && seen && !started && currentLevel < 2) {
+        if (minutes >= 30 + travelBuffer && seen && !started && currentLevel < 2) {
             const candidates = await database
                 .collection<User>('users')
                 .find({
@@ -371,7 +375,7 @@ export async function escalateUnresponsiveBreakdowns() {
             }
             continue;
         }
-        if (minutes >= 60 && currentLevel < 3) {
+        if (minutes >= 60 + travelBuffer && currentLevel < 3) {
             const eventId = await createSystemEvent(breakdown as unknown as Breakdown, 'escalation_critical', 'Arıza 60 dakika içinde çözüme ilerlemedi; kritik eskalasyon oluşturuldu.', 3);
             const result = await database.collection('breakdowns').updateOne({ _id: breakdown._id, escalationLevel: { $lt: 3 } }, { $set: { escalationLevel: 3, updatedAt: now } });
             if (result.modifiedCount) {
@@ -397,5 +401,34 @@ async function escalatedCriticalAlert(breakdown: Breakdown, eventId: string) {
         body: `${breakdown.code} 60 dakikadır çözüme ilerlemedi. Acil müdahale gerekiyor.`,
         href: `/arizalar/${breakdown._id}`,
     })));
+}
+
+/**
+ * Her Pazartesi çalışır (günlük cron içinden çağrılır, kendi içinde gün
+ * kontrolü yapar): o haftanın nöbet planı (elektromekanik + normal) eksikse
+ * yöneticilere bir kez uyarı gönderir. Plan tamamsa hiçbir şey yapmaz.
+ */
+export async function checkWeeklyDutyRoster(): Promise<boolean> {
+    const now = new Date();
+    if (!isMondayInTurkey(now)) return false;
+
+    const database = await db();
+    const weekStart = turkeyWeekStart(now);
+    const duty = await database.collection('duty_roster').findOne({ weekStart });
+    const missing: string[] = [];
+    if (!duty?.elektromekanikTechnicianId) missing.push('Elektromekanik');
+    if (!duty?.normalTechnicianId) missing.push('Normal');
+    if (!missing.length) return false;
+
+    const managers = await database.collection<User>('users').find({ role: 'yonetici', active: true }).toArray();
+    await Promise.all(managers.map((manager) => createNotification({
+        recipientId: manager._id,
+        breakdownId: '',
+        eventId: `duty-roster-missing:${weekStart}:${manager._id}`,
+        title: 'Bu hafta nöbetçi seçilmedi',
+        body: `${weekStart} haftası için ${missing.join(' ve ')} nöbetçi teknisyen(ler)i henüz atanmadı. Lütfen nöbet planını tamamlayın.`,
+        href: '/yonetim/nobet',
+    })));
+    return true;
 }
 

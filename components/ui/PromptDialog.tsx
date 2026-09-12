@@ -31,13 +31,14 @@ export default function PromptDialog({
 }: Props) {
   const [value, setValue] = useState(initialValue);
   const [prevOpen, setPrevOpen] = useState(open);
-  const [prevInitial, setPrevInitial] = useState(initialValue);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // React önerisi: prop değişince state'i effect içinde değil, render sırasında senkronla
-  if (open !== prevOpen || (open && initialValue !== prevInitial)) {
+  // "open" false -> true geçişinde değeri sıfırlamak için: bunu bir efekt
+  // yerine render sırasında yapıyoruz (React'in "adjusting state when a prop
+  // changes" deseni) — bir efekt içinden senkron setState çağırmak
+  // kademeli (cascading) render'lara yol açabileceğinden önerilmiyor.
+  if (open !== prevOpen) {
     setPrevOpen(open);
-    setPrevInitial(initialValue);
     if (open) setValue(initialValue);
   }
 

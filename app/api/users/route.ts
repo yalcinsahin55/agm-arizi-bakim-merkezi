@@ -9,11 +9,15 @@ import { rateLimit, rateLimitResponse } from '@/lib/security';
 import { normalizePhone } from '@/lib/phone';
 import type { User } from '@/types';
 const roles = ['yonetici', 'teknisyen', 'operator', 'goruntuleyici'] as const;
+const technicianTypes = ['elektromekanik', 'normal'] as const;
+const travelBufferOptions = [0, 30, 60, 90, 120] as const;
 const schema = z.object({
     name: z.string().min(2).max(100),
     phone: z.string().min(10).max(20),
     password: z.string().min(8).max(128),
     role: z.enum(roles),
+    technicianType: z.enum(technicianTypes).optional(),
+    dutyTravelBufferMinutes: z.coerce.number().refine((v) => (travelBufferOptions as readonly number[]).includes(v)).optional(),
 });
 type UserPatchBody = {
     id?: unknown;
@@ -22,6 +26,8 @@ type UserPatchBody = {
     active?: unknown;
     password?: unknown;
     phone?: unknown;
+    technicianType?: unknown;
+    dutyTravelBufferMinutes?: unknown;
 };
 export async function GET() {
     const user = await getCurrentUser();
@@ -63,6 +69,10 @@ export async function POST(req: Request) {
         phoneNumber: phone,
         whatsappEnabled: true,
         role: value.role,
+        ...(value.role === 'teknisyen' ? {
+            technicianType: value.technicianType || 'normal',
+            dutyTravelBufferMinutes: value.dutyTravelBufferMinutes ?? 0,
+        } : {}),
         passwordHash: await bcrypt.hash(value.password, 12),
         active: true,
         createdAt: new Date(),
@@ -109,6 +119,16 @@ export async function PATCH(req: Request) {
     }
     if (typeof body.active === 'boolean')
         set.active = body.active;
+    if (typeof body.technicianType === 'string' && technicianTypes.includes(body.technicianType as (typeof technicianTypes)[number])) {
+        set.technicianType = body.technicianType;
+    }
+    if (body.dutyTravelBufferMinutes !== undefined) {
+        const n = Number(body.dutyTravelBufferMinutes);
+        if (!(travelBufferOptions as readonly number[]).includes(n)) {
+            return NextResponse.json({ error: 'Geçersiz ulaşım süresi' }, { status: 400 });
+        }
+        set.dutyTravelBufferMinutes = n;
+    }
     if (typeof body.password === 'string' && body.password.length >= 8) {
         set.passwordHash = await bcrypt.hash(body.password, 12);
     }

@@ -7,6 +7,9 @@ import { queueWhatsappMessage } from '@/lib/whatsapp-outbox';
 import { z } from 'zod';
 import { rateLimit, rateLimitResponse } from '@/lib/security';
 import { diffFields, writeAudit } from '@/lib/audit';
+import { resolveNightDutyAssignment } from '@/lib/night-duty-assign';
+import { isOffHours } from '@/lib/tz';
+import { notifyTechnicianAssignment } from '@/lib/assign-technician';
 import type { Breakdown } from '@/types';
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://agm-arizi-bakim-merkezi-zsru.vercel.app';
 const schema = z.object({
@@ -14,6 +17,7 @@ const schema = z.object({
     subcategoryId: z.string().optional(), subcategoryName: z.string().optional(),
     priority: z.enum(['kritik', 'yuksek', 'orta', 'dusuk']), title: z.string().min(3).max(160), description: z.string().min(3).max(5000),
     motorHours: z.coerce.number().min(0).optional(), downtimeStartedAt: z.string().datetime().optional(),
+    criticalDispatch: z.boolean().optional(),
 });
 export async function GET() {
     const u = await getCurrentUser();
@@ -21,7 +25,13 @@ export async function GET() {
         return NextResponse.json({ error: 'Giriş gerekli' }, { status: 401 });
     const d = await db();
     const q = { archived: { $ne: true }, ...(u.role === 'yonetici' || u.role === 'goruntuleyici' ? {} : u.role === 'teknisyen' ? { assignedTechnicianId: u._id } : { createdBy: u._id }) };
-    const rows = await d.collection('breakdowns').find(q).sort({ createdAt: -1 }).limit(500).toArray();
+    // Liste/yoklama (polling) görünümü ağır alanları (report, description, parts, materials vb.)
+    // taşımaz; bu alanlar yalnızca arıza detay sayfasında tek kayıt için çekilir.
+    const rows = await d.collection('breakdowns').find(q).sort({ createdAt: -1 }).limit(300).project({
+        code: 1, title: 1, status: 1, priority: 1, motorId: 1, motorName: 1, categoryName: 1, subcategoryName: 1,
+        assignedTechnicianId: 1, assignedTechnicianName: 1, createdBy: 1, createdByName: 1,
+        createdAt: 1, updatedAt: 1, startedAt: 1, closedAt: 1, seenAt: 1, submittedAt: 1, archived: 1,
+    }).toArray();
     return NextResponse.json(rows);
 }
 export async function POST(req: Request) {
@@ -59,10 +69,18 @@ export async function POST(req: Request) {
     let category: CategoryDoc | null = null;
     let subcategory: CategoryDoc | null = null;
     try {
-        motor = await d.collection<MotorDoc>('motors').findOne({ _id: parsed.data.motorId, active: true });
-        category = await d.collection('categories').findOne({ _id: new ObjectId(parsed.data.categoryId), active: true }) as CategoryDoc | null;
-        if (parsed.data.subcategoryId)
-            subcategory = await d.collection('categories').findOne({ _id: new ObjectId(parsed.data.subcategoryId), active: true }) as CategoryDoc | null;
+        // Motor ve kategori(ler) birbirinden bağımsız sorgular; sırayla değil
+        // paralel çalıştırılarak arıza oluşturma isteğinin gecikmesi azaltılır.
+        const [motorResult, categoryResult, subcategoryResult] = await Promise.all([
+            d.collection<MotorDoc>('motors').findOne({ _id: parsed.data.motorId, active: true }),
+            d.collection('categories').findOne({ _id: new ObjectId(parsed.data.categoryId), active: true }) as Promise<CategoryDoc | null>,
+            parsed.data.subcategoryId
+                ? (d.collection('categories').findOne({ _id: new ObjectId(parsed.data.subcategoryId), active: true }) as Promise<CategoryDoc | null>)
+                : Promise.resolve(null),
+        ]);
+        motor = motorResult;
+        category = categoryResult;
+        subcategory = subcategoryResult;
     }
     catch {
         return NextResponse.json({ error: 'Motor veya kategori kimliği geçersiz' }, { status: 400 });
@@ -76,9 +94,44 @@ export async function POST(req: Request) {
     const item = { _id: id, code: `ARZ-${now.getFullYear()}-${id.toHexString().slice(-6).toUpperCase()}`, ...parsed.data, motorName: motor.name, equipmentType: motor.equipmentType ?? 'motor', categoryName: category.name, subcategoryName: subcategory?.name,
         motorHours: parsed.data.motorHours ?? null, downtimeStartedAt: parsed.data.downtimeStartedAt ? new Date(parsed.data.downtimeStartedAt) : null,
         status: 'acik', escalationLevel: 0, createdBy: String(u._id), createdByName: u.name, createdAt: now, updatedAt: now,
-        report: '', rootCause: '', correctiveAction: '', parts: [], materials: [] };
+        openedOffHours: isOffHours(now), criticalDispatch: parsed.data.criticalDispatch === true,
+        report: '', rootCause: '', correctiveAction: '', parts: [], materials: [] } as Record<string, unknown>;
+
+    // Mesai dışında (hafta içi 20:00-06:00 veya Cmt/Paz tamamı) VE arızayı
+    // açan kişi "kritik, üretim kaybı yaşanabilir" kutusunu işaretlediyse,
+    // kategoriye göre haftanın nöbetçi teknisyenine otomatik atanır;
+    // yönetici manuel atama beklemeden teknisyen anında bilgilendirilir.
+    // İşaretlenmediyse kayıt normal şekilde açık kalır, sabah manuel atanır.
+    const nightAssignment = await resolveNightDutyAssignment(d, category, parsed.data.criticalDispatch === true, now);
+    if (nightAssignment) {
+        item.status = 'atandi';
+        item.assignedTechnicianId = nightAssignment.technicianId;
+        item.assignedTechnicianName = nightAssignment.technicianName;
+        item.assignedAt = now;
+        item.assignedTravelBufferMinutes = nightAssignment.travelBufferMinutes;
+    }
+
     await d.collection('breakdowns').insertOne(item);
     await d.collection('breakdown_events').insertOne({ breakdownId: id, eventId: `created:${id}`, type: 'created', actorId: u._id, actorName: u.name, createdAt: now });
+    if (nightAssignment) {
+        await writeAudit(d, {
+            breakdownId: id,
+            eventId: `assigned:${id}:auto`,
+            type: 'assigned',
+            actorId: 'system',
+            actorName: 'Nöbet Sistemi',
+            technicianId: nightAssignment.technicianId,
+            technicianName: nightAssignment.technicianName,
+            note: `Mesai dışı + kritik/üretim kaybı işaretlemesi nedeniyle ${nightAssignment.type === 'elektromekanik' ? 'elektromekanik' : 'normal'} nöbetçi teknisyene otomatik atandı${nightAssignment.travelBufferMinutes ? ` (${nightAssignment.travelBufferMinutes} dk ulaşım süresi tanımlı)` : ''}.`,
+            createdAt: now,
+        });
+        await notifyTechnicianAssignment(
+            { _id: nightAssignment.technicianId, phoneNumber: nightAssignment.phoneNumber, whatsappEnabled: nightAssignment.whatsappEnabled },
+            { _id: id, code: item.code as string, motorName: item.motorName as string, categoryName: item.categoryName as string, priority: item.priority as string },
+            `assigned:${id}:auto`,
+            'Nöbetçi olarak kritik arıza atandı',
+        );
+    }
     await notifyManagers({ ...item, _id: String(id) } as unknown as Breakdown, `created:${id}`, 'created');
     const waAdmins = await d.collection('users').find({ role: 'yonetici', active: true, whatsappEnabled: { $ne: false }, phoneNumber: { $exists: true, $ne: '' } }).toArray();
     for (const a of waAdmins) {
