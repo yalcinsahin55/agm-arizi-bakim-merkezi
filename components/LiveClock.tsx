@@ -2,26 +2,30 @@
 
 import { useEffect, useState } from 'react';
 
-function formatTime(d: Date) {
-  const h = String(d.getHours()).padStart(2, '0');
-  const m = String(d.getMinutes()).padStart(2, '0');
-  return `${h}:${m}`;
-}
-
-export default function LiveClock({ className }: { className?: string }) {
-  const [time, setTime] = useState(() => formatTime(new Date()));
+/**
+ * Canlı saat (SS:DD göstermez, dakika hassasiyeti yeterli). Sunucu render'ında
+ * gösterilemeyeceği için (server component'te "an" sabitlenir) istemci
+ * tarafında mount olduktan sonra dolar — bu yüzden ilk anlık boş/placeholder
+ * görünüp hemen ardından gerçek saat gelir; hydration uyuşmazlığı oluşmaz.
+ */
+export default function LiveClock() {
+  const [time, setTime] = useState<string | null>(null);
 
   useEffect(() => {
-    const tick = () => setTime(formatTime(new Date()));
-    tick();
-    // her saniye değil; dakika değişiminde güncelle (daha sakin)
-    const id = setInterval(tick, 1000);
-    return () => clearInterval(id);
+    const update = () =>
+      setTime(new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }));
+    // İlk değeri de (mount anında) senkron değil, ertelenmiş olarak set ediyoruz.
+    const initial = setTimeout(update, 0);
+    const id = setInterval(update, 15000);
+    return () => {
+      clearTimeout(initial);
+      clearInterval(id);
+    };
   }, []);
 
   return (
-    <time className={className} dateTime={time} aria-label={`Saat ${time}`}>
-      {time}
-    </time>
+    <span className="live-clock" suppressHydrationWarning>
+      {time ?? '--:--'}
+    </span>
   );
 }

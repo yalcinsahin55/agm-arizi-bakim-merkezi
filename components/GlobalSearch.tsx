@@ -38,7 +38,9 @@ export default function GlobalSearch() {
     }
   }
 
-  // Ctrl/Cmd+K ile her yerden açılabilir; Escape ile kapanır.
+  // Ctrl/Cmd+K ile her yerden açılabilir; Escape ile kapanır. Ayrıca mobil
+  // "Diğer" menüsündeki "Ara" butonu gibi başka bileşenlerin de bu modalı
+  // açabilmesi için özel bir window event'i dinlenir.
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
@@ -48,8 +50,15 @@ export default function GlobalSearch() {
         setOpen(false);
       }
     }
+    function onExternalOpen() {
+      setOpen(true);
+    }
     window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
+    window.addEventListener('agm:open-search', onExternalOpen);
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      window.removeEventListener('agm:open-search', onExternalOpen);
+    };
   }, []);
 
   useEffect(() => {

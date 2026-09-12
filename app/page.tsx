@@ -8,6 +8,7 @@ import TechnicianWorkload from '@/components/dashboard/TechnicianWorkload';
 import TrendBars from '@/components/dashboard/TrendBars';
 import type { Breakdown, User } from '@/types';
 import Logo from '@/components/Logo';
+import LiveClock from '@/components/LiveClock';
 import { turkeyWeekStart } from '@/lib/tz';
 
 const activeStatuses = ['acik', 'atandi', 'devam_ediyor', 'revizyon'] as const;
@@ -300,7 +301,7 @@ export default async function Home() {
               {roleMsg}
             </div>
             <div className="muted" style={{ marginTop: 6, fontSize: 12 }}>
-              {motorCount} motor · {todayLabel}
+              {motorCount} motor · {todayLabel} · <LiveClock />
             </div>
           </div>
         </div>

@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import type { Role } from '@/types';
@@ -8,8 +9,10 @@ type Item = {
   href: string;
   label: string;
   match?: string[];
-  icon: 'home' | 'list' | 'plus' | 'chart' | 'bell' | 'queue' | 'motor';
+  icon: 'home' | 'list' | 'plus' | 'chart' | 'bell' | 'queue' | 'motor' | 'more';
 };
+
+type ExtraLink = { href: string; label: string };
 
 function Icon({ name, active }: { name: Item['icon']; active: boolean }) {
   const stroke = active ? '#f0b429' : '#91a4ac';
@@ -71,6 +74,14 @@ function Icon({ name, active }: { name: Item['icon']; active: boolean }) {
           <path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1 7 17M17 7l2.1-2.1" />
         </svg>
       );
+    case 'more':
+      return (
+        <svg {...common}>
+          <circle cx="5" cy="12" r="1.6" fill={stroke} />
+          <circle cx="12" cy="12" r="1.6" fill={stroke} />
+          <circle cx="19" cy="12" r="1.6" fill={stroke} />
+        </svg>
+      );
   }
 }
 
@@ -107,9 +118,35 @@ function itemsFor(role: Role): Item[] {
   ];
 }
 
+// Masaüstü kenar menüsünde bulunup mobil alt menüde yer almayan bağlantılar.
+// Bunlar "Diğer" panelinde gösterilir.
+function extraLinksFor(role: Role): ExtraLink[] {
+  if (role === 'yonetici') {
+    return [
+      { href: '/yonetim/kullanicilar', label: 'Kullanıcılar' },
+      { href: '/yonetim/nobet', label: 'Nöbetçi Planı' },
+      { href: '/yonetim/kategoriler', label: 'Kategoriler' },
+      { href: '/motorlar', label: 'Ekipman Envanteri' },
+      { href: '/arizalar/arsiv', label: 'Arşiv' },
+      { href: '/yonetim/audit', label: 'Denetim Günlüğü' },
+      { href: '/yonetim/oturumlar', label: 'Aktif Oturumlar' },
+      { href: '/profil', label: 'Hesabım' },
+    ];
+  }
+  if (role === 'goruntuleyici') {
+    return [{ href: '/motorlar', label: 'Ekipman Envanteri' }, { href: '/profil', label: 'Hesabım' }];
+  }
+  if (role === 'teknisyen') {
+    return [{ href: '/raporlar', label: 'Raporlar' }, { href: '/profil', label: 'Hesabım' }];
+  }
+  return [{ href: '/profil', label: 'Hesabım' }];
+}
+
 export default function MobileNav({ role }: { role: Role }) {
   const pathname = usePathname() || '/';
   const items = itemsFor(role);
+  const extraLinks = extraLinksFor(role);
+  const [moreOpen, setMoreOpen] = useState(false);
 
   function active(item: Item) {
     if (item.match)
@@ -118,21 +155,74 @@ export default function MobileNav({ role }: { role: Role }) {
     return pathname === item.href || pathname.startsWith(item.href + '/');
   }
 
+  function openSearch() {
+    setMoreOpen(false);
+    window.dispatchEvent(new Event('agm:open-search'));
+  }
+
   return (
-    <nav className="mobile-nav" aria-label="Mobil menü">
-      {items.map((item) => {
-        const isActive = active(item);
-        return (
-          <Link
-            key={item.href + item.label}
-            href={item.href}
-            className={`mobile-nav-item ${isActive ? 'active' : ''}`}
+    <>
+      <nav className="mobile-nav" aria-label="Mobil menü">
+        {items.map((item) => {
+          const isActive = active(item);
+          return (
+            <Link
+              key={item.href + item.label}
+              href={item.href}
+              className={`mobile-nav-item ${isActive ? 'active' : ''}`}
+            >
+              <Icon name={item.icon} active={isActive} />
+              <span>{item.label}</span>
+            </Link>
+          );
+        })}
+        <button
+          type="button"
+          className={`mobile-nav-item mobile-nav-more-trigger ${moreOpen ? 'active' : ''}`}
+          onClick={() => setMoreOpen(true)}
+        >
+          <Icon name="more" active={moreOpen} />
+          <span>Diğer</span>
+        </button>
+      </nav>
+
+      {moreOpen && (
+        <div
+          className="modal-backdrop mobile-more-backdrop"
+          role="presentation"
+          onClick={() => setMoreOpen(false)}
+        >
+          <div
+            className="mobile-more-sheet"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Diğer menü"
+            onClick={(e) => e.stopPropagation()}
           >
-            <Icon name={item.icon} active={isActive} />
-            <span>{item.label}</span>
-          </Link>
-        );
-      })}
-    </nav>
+            <div className="mobile-more-handle" />
+            <button type="button" className="mobile-more-row mobile-more-search" onClick={openSearch}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="11" cy="11" r="7" />
+                <path d="m21 21-4.35-4.35" />
+              </svg>
+              Ara
+            </button>
+            {extraLinks.map((link) => (
+              <Link
+                key={link.href}
+                href={link.href}
+                className="mobile-more-row"
+                onClick={() => setMoreOpen(false)}
+              >
+                {link.label}
+              </Link>
+            ))}
+            <button type="button" className="mobile-more-row mobile-more-cancel" onClick={() => setMoreOpen(false)}>
+              Kapat
+            </button>
+          </div>
+        </div>
+      )}
+    </>
   );
 }

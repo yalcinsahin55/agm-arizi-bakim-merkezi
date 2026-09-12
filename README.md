@@ -2,110 +2,116 @@
 
 Mevcut AGM planlı bakım uygulamasından tamamen bağımsız, arıza/breakdown yönetimi için Next.js + TypeScript + MongoDB tabanlı web uygulaması.
 
-## v0.6 kapsamında
-- Yönetici / Teknisyen / Operatör / Üst Düzey Görüntüleyici rolleri
-- Arıza yaşam döngüsü: Açık → Atandı → Devam Ediyor → Onay Bekliyor → Onaylandı veya Revizyon
-- Teknisyen bildirim zinciri: bildirimi gördü → işe başladı → rapor gönderdi
-- Kalıcı MongoDB bildirim kayıtları + Web Push + 5 dakikalık Vercel Cron retry
-- Yönetici arıza detayında teknisyen yanıt/müdahale durumlarının ayrı takibi
-- Profesyonel yönetici/teknisyen/görüntüleyici dashboard görünümü
-- Teknisyen iş yükü görünümü
-- Motor saati, duruş başlangıcı, müdahale başlangıcı, çözüm süresi
-- Teknik rapor, kök neden, düzeltici faaliyet, parça ve malzeme kayıtları
-- Yönetici tarafından ana kategori + alt kategori yönetimi
-- Üst düzey kullanıcı için salt-okunur arıza ve rapor erişimi
-- Server-side motor/kategori/alt kategori doğrulaması
-- Kategori seed kayıtları MongoDB ObjectId standardına alındı
+> **Önemli mimari kural:** Bu proje mevcut `agm-bakim-nextjs` (planlı bakım) uygulamasının MongoDB'sine, GitHub reposuna veya Vercel projesine **bağlanmamalıdır**. Kurulum tamamen ayrı kaynaklarla yapılmalıdır. İki sistem arasında yalnızca kullanıcı arayüzünden geçiş planlanır; turbo, intercooler, yağ, siloksan, vibrasyon damperi, alternatör gibi planlı bakım kayıtları bu veritabanına kopyalanmaz. Arızi raporda parça/işlem bilgisi yalnızca müdahalenin bağlamı olarak tutulur.
+
+## Roller
+- **Yönetici** — tam yetki: kullanıcı/kategori/nöbet yönetimi, teknisyen atama, onay, arşivleme, denetim günlüğü, raporlar.
+- **Teknisyen** — kendisine atanan arızaları görür, bildirimi gördüğünü onaylar, işe başlar, teknik rapor gönderir.
+- **Operatör** — arıza açar, kendi açtığı kayıtları görür/düzenler/siler.
+- **Üst Düzey / Görüntüleyici** — tüm arızalara ve raporlara salt-okunur erişim.
+
+## Arıza yaşam döngüsü
+`Açık → Atandı → Devam Ediyor → Onay Bekliyor → Onaylandı` veya `Revizyon` (revizyon notu zorunludur, döngüde önceki müdahale zaman damgaları temizlenir). Teknisyen bildirim zinciri: **bildirimi gördü → işe başladı → rapor gönderdi**. Terminal durumdaki (onaylanmış/arşivlenmiş) kayıtlar tekrar açılamaz.
+
+## Öne çıkan özellikler
+
+### Arıza ve kategori yönetimi
+- Ana kategori + alt kategori yönetimi; alt kategoriler yalnızca kendi üst kategorisi seçiliyken listelenir, sunucu tarafında da eşleşme doğrulanır.
+- Motor saati, duruş başlangıcı, müdahale başlangıcı, çözüm süresi takibi.
+- Teknik rapor, kök neden, düzeltici faaliyet, parça ve malzeme kayıtları.
+- Arıza kaydına JPG/PNG/WEBP fotoğraf ve PDF servis dokümanı eklenebilir (Vercel Blob, maks. 6 MB).
+- Yönetici için fiziksel silme yerine geri izlenebilir arşivleme; arşivli kayıtlar listelerden ve işlemlerden çıkarılır.
+- **Tekrarlayan arıza tespiti:** aynı motor + kategoride son 90 günde tekrar açılan arızalarda hem arıza detayında hem yeni arıza formunda uyarı banner'ı.
+- **Global arama (Ctrl/Cmd+K):** arıza kodu/motor/kullanıcı arama; rol bazlı erişim, regex-injection korumalı.
+
+### Nöbetçi teknisyen sistemi (mesai dışı otomatik atama)
+- Teknisyenlere **Elektromekanik / Normal** tip ve **nöbetçi ulaşım süresi** (0/30/60/90/120 dk) tanımlanır.
+- Ana kategorilere gece/hafta sonu nöbet yönlendirmesi (hangi tip nöbetçiye gideceği) atanır; alt kategoriler üst kategoriden miras alır.
+- Yönetici her hafta için 2 nöbetçi (biri Elektromekanik, biri Normal) atar (`/yonetim/nobet`); plan Pazartesi'ye kadar tamamlanmazsa yöneticilere otomatik uyarı gider.
+- **Mesai dışı** = hafta içi 20:00–06:00 **veya** Cumartesi/Pazar'ın tamamı.
+- "Yeni Arıza" formunda, yalnızca mesai dışı saatlerde görünen **"Arıza kritik, üretim kaybı yaşanabilir"** seçeneği: işaretlenirse kategoriye göre haftanın nöbetçisine otomatik atanır (push + WhatsApp), işaretlenmezse kayıt yönetici mesaiye başlayana kadar manuel bekler.
+- Nöbetçi bulunamazsa yöneticilere haftada/tipte bir kez uyarı gider.
+- Mesai dışı atamalarda, teknisyenin ulaşım süresi kadar yanıt/işe başlama eskalasyon eşikleri ötelenir; raporlarda **Mesai İçi** ve **Mesai Dışı / Nöbetçi Performansı** SLA metrikleri ayrı hesaplanır.
+
+### Bildirimler
+- Kalıcı MongoDB bildirim kayıtları + Web Push + WhatsApp (Vercel Blob değil, ayrı outbox kuyruğu ile kuyruklanıp gönderilir).
+- Kullanıcılar profil sayfasından kendi WhatsApp bildirim tercihini yönetebilir.
+- Yanıtsız arızalar için kademeli eskalasyon (15 / 30 / 60 dk); nöbetçi ulaşım süresi bu eşiklere otomatik eklenir.
+- Bildirim kaydı push gönderimi başarısız olsa bile arıza işlemini bloklamaz; push daha sonra retry cron'u ile tekrar denenir.
+
+### Raporlar ve panolar
+- Yönetici/teknisyen/görüntüleyici için ayrı, profesyonel dashboard görünümleri; teknisyen iş yükü görünümü.
+- Motor/kategori bazlı Pareto dağılımları, kategori bazlı SLA, aylık trend, öncelik dağılımı, tekrarlayan kök nedenler, motor risk/öngörü görünümü (son 90 gün arıza sıklığı, ort. saat/arıza, risk etiketi).
+- CSV ve PDF dışa aktarma.
+- Denetim günlüğü (`/yonetim/audit`) sayfalı yüklenir ("Daha Fazla Yükle"), tarih/tip/kullanıcı filtreli.
+
+### Güvenlik
+- Başarısız giriş denemeleri e-posta + istemci anahtarı bazında kısa süreli sınırlandırılır (MongoDB TTL ile temizlenir); login dışındaki mutasyon endpoint'lerine de kullanıcı/IP bazlı rate limiting uygulanır.
+- Server-side motor/kategori/alt kategori doğrulaması; teknisyen ataması yarış durumuna karşı atomik durum kontrolüyle korunur.
+- Yönetici kendi hesabını kilitleyemez, son aktif yöneticiyi pasifleştiremez.
+- Arıza olaylarına (`breakdown_events`) `fieldChanges` ile eski/yeni değer diff'i kaydedilir.
+- Arama ucu (global arama, kategori/kullanıcı sorguları) regex/NoSQL-injection'a karşı `escapeRegex` ile korunur.
+- RBAC yetki matrisi (`can()`) hiçbir Next.js çalışma zamanı bağımlılığı olmayan `lib/permissions.ts` içinde tutulur; `lib/auth.ts` bunu geriye dönük uyumluluk için yeniden dışa aktarır — bu ayrım sayesinde yetki mantığı düz Node.js test ortamında da güvenle test edilebilir.
 
 ## Demo kullanıcılar
-- `admin@agm.local` — Yönetici
-- `teknisyen@agm.local` — Teknisyen
-- `operator@agm.local` — Operatör
-- `ceo@agm.local` — Üst Düzey / Görüntüleyici
-- Varsayılan geliştirme/demo şifresi: `ChangeMe123!`
-- Canlı/production seed sırasında `SEED_DEMO_PASSWORD` environment variable'ı ile güçlü bir ilk şifre belirleyin; bu değer GitHub'a yazılmaz.
+| E-posta | Rol |
+|---|---|
+| `admin@agm.local` | Yönetici |
+| `teknisyen@agm.local` | Teknisyen |
+| `operator@agm.local` | Operatör |
+| `ceo@agm.local` | Üst Düzey / Görüntüleyici |
+
+Varsayılan geliştirme/demo şifresi: `ChangeMe123!`. Canlı/production seed sırasında `SEED_DEMO_PASSWORD` environment variable'ı ile güçlü bir ilk şifre belirleyin; bu değer GitHub'a yazılmaz.
+
+> Mevcut teknisyenlerin `technicianType` alanı boşsa varsayılan "Normal" kabul edilir; nöbet planında Elektromekanik teknisyen görünmesi için Kullanıcılar sayfasından ilgili teknisyenlerin tipini güncelleyin. Aynı şekilde mevcut ana kategorilerin gece yönlendirmesi de varsayılan olarak "Normal"dır — Kategoriler sayfasından güncellenebilir.
 
 ## Kurulum
-1. Yeni MongoDB veritabanı oluşturun.
-2. `.env.example` değerlerini `.env.local` içine kopyalayın.
-3. `MONGODB_URI`, `MONGODB_DB`, `JWT_SECRET` ve Web Push için VAPID değerlerini girin.
-4. Production seed çalıştıracaksanız `SEED_DEMO_PASSWORD` da tanımlayın.
-5. `npm install`
-6. `npm run seed`
-7. `npm run dev`
+1. Yeni bir MongoDB veritabanı oluşturun (mevcut planlı bakım veritabanıyla paylaşılmamalı).
+2. `.env.example` dosyasını `.env.local` olarak kopyalayın ve aşağıdaki değerleri doldurun.
+3. `npm install`
+4. `npm run vapid` (Web Push VAPID anahtarları üretir, `.env.local`'a yazın)
+5. `npm run seed` (demo kullanıcılar, kategoriler ve `data/agm-motors.json` içindeki motorları yükler)
+6. `npm run dev`
 
-## Vercel
-Cron endpoint: `/api/cron/notifications`
-`CRON_SECRET` ile korunur. `vercel.json` içindeki Vercel Cron, Hobby planın günlük sınırı nedeniyle günde 1 kez (`0 3 * * *`) çalışacak şekilde ayarlanmıştır. Bildirim tekrar deneme/eskalasyonun gerçek zamanlıya yakın (ör. 5 dakikada bir) çalışması için ücretsiz bir dış cron servisi (ör. cron-job.org) kullanılıp aynı endpoint `Authorization: Bearer <CRON_SECRET>` header'ıyla çağrılmalıdır. Pro plana geçilirse `vercel.json`'daki schedule `*/5 * * * *` olarak geri değiştirilebilir.
+### Environment değişkenleri (`.env.local`)
+| Değişken | Açıklama |
+|---|---|
+| `MONGODB_URI`, `MONGODB_DB` | Bu projeye özel, ayrı MongoDB bağlantısı |
+| `JWT_SECRET` | Oturum imzalama anahtarı — production'da en az 32 karakter zorunlu |
+| `VAPID_SUBJECT`, `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `NEXT_PUBLIC_VAPID_PUBLIC_KEY` | Web Push için (`npm run vapid` ile üretilir) |
+| `CRON_SECRET` | `/api/cron/notifications` ucunu korumak için `Authorization: Bearer <CRON_SECRET>` |
+| `NEXT_PUBLIC_APP_URL` | Bildirim/WhatsApp mesajlarındaki bağlantılar için tam site adresi |
+| `BLOB_READ_WRITE_TOKEN` | Arıza eki (fotoğraf/PDF) yüklemeleri için Vercel Blob |
+| `SEED_DEMO_PASSWORD` | *(opsiyonel)* Production seed'de demo kullanıcı şifresi |
 
-## Önemli mimari kural
-Bu proje mevcut `agm-bakim-nextjs` uygulamasının MongoDB'sine, GitHub reposuna veya Vercel projesine bağlanmamalıdır. İlk kurulum tamamen ayrı kaynaklarla yapılmalıdır.
+## Test ve doğrulama
+```bash
+npm run typecheck   # tsc --noEmit
+npm run lint        # eslint .
+npm run test        # tsx --test "tests/**/*.test.ts"
+npm run verify       # üçünü sırayla çalıştırır — her PR öncesi önerilir
+```
+`tests/` altında RBAC yetki matrisi, arıza iş akışı geçişleri, tekrarlayan arıza eşikleri, Türkiye saat dilimi (mesai dışı/hafta sonu sınırları), regex-injection koruması ve rapor yardımcıları için otomatik testler bulunur.
 
-## Test notu
-Kaynak kod üzerinde TypeScript/TSX sözdizimi taraması yapılmıştır. Bu çalışma ortamında `npm install` tamamlanamadığı için gerçek `next build` sonucu doğrulanmış değildir.
+## Vercel dağıtımı ve cron
+Cron endpoint'i: `/api/cron/notifications` — `CRON_SECRET` ile korunur ve şunları yapar:
+- Başarısız push bildirimlerini yeniden dener,
+- Yanıtsız arızaları eskale eder,
+- Pazartesi günleri o haftanın nöbet planı eksikse yöneticilere uyarır.
 
-
-## v1.0 Dosya Ekleri
-Arıza kayıtlarına JPG/PNG/WEBP fotoğraf ve PDF servis dokümanı eklenebilir. Dosyalar Vercel Blob'da, ek metadata ise MongoDB'de tutulur. Vercel projesinde `BLOB_READ_WRITE_TOKEN` environment variable tanımlanmalıdır. Maksimum dosya boyutu 6 MB'dır.
+`vercel.json` içindeki Vercel Cron, Hobby planın günlük sınırı nedeniyle günde 1 kez (`0 3 * * *` UTC → 06:00 Türkiye saati) çalışacak şekilde ayarlıdır. Bildirim tekrar deneme/eskalasyonun gerçek zamanlıya yakın (ör. 5 dakikada bir) çalışması isteniyorsa, ücretsiz bir dış cron servisi (ör. cron-job.org) aynı endpoint'i `Authorization: Bearer <CRON_SECRET>` header'ıyla çağıracak şekilde ayarlanabilir. Pro plana geçilirse `vercel.json`'daki schedule `*/5 * * * *` olarak değiştirilebilir.
 
 ## AGM motor veri seti
+`data/agm-motors.json`, mevcut AGM bakım sistemindeki motorların son alınan çalışma saati ve yük değerlerini içerir. `npm run seed` bu motorları ilk kurulumda yeni veritabanına aktarır; mevcut motorların çalışma saatlerini tekrar seed çalıştırıldığında üzerine yazmaz. Canlı sistemden yeni bir aktarım için: `npm run import:engines -- /path/seed_data.json` (hem eski `engines/oil/maintTypes` export formatını hem `data/agm-motors.json` içindeki `motors[]` snapshot formatını destekler).
 
-`data/agm-motors.json` mevcut AGM bakım sistemindeki 39 motorun son alınan çalışma saati ve yük değerlerini içerir. `npm run seed` bu motorları ilk kurulumda yeni veritabanına aktarır; mevcut motorların çalışma saatlerini tekrar seed çalıştırıldığında üzerine yazmaz. İsterseniz canlı sistemden yeni bir aktarım için `npm run import:engines -- /path/seed_data.json` komutu kullanılabilir.
-
-## Veri sınırı
-Bu proje arızi bakım için bağımsızdır. Planlı bakım sistemindeki turbo, intercooler, yağ, siloksan, vibrasyon damperi, alternatör ve benzeri kayıtları bu veritabanına kopyalamaz. Arızi raporda parça/işlem bilgisi yalnızca müdahalenin bağlamı olarak tutulur. İki sistem arasında yalnızca kullanıcı arayüzünden geçiş planlanır.
-
-
-## v1.5 güvenlik ve iş akışı notları
-- Başarısız giriş denemeleri e-posta + istemci anahtarı bazında kısa süreli sınırlandırılır; MongoDB TTL ile deneme kayıtları temizlenir.
-- Teknisyen ataması yalnızca açık/atanmış/revizyon durumlarında yapılabilir; eski teknisyene aktarım bildirimi gönderilir.
-- Revizyon işlemi için açıklayıcı not zorunludur ve revizyon döngüsünde önceki müdahale zaman damgaları temizlenir.
-- Arızi sistem, planlı bakım sistemindeki turbo/intercooler/yağ/diğer parça yaşam döngüsü verilerini içermez. İki sistem ayrı MongoDB ve ayrı uygulama olarak kalır.
-
-
-## v1.7
-- Technician actions use an atomic assignment guard to prevent a reassigned technician from changing the record.
-- Duplicate seen/accept/start actions are idempotent.
-- Added notification retry index for cron efficiency.
-
-
-## v2.3 güvenilirlik ve yetki sertleştirmeleri
-
-v2.3 ile teknisyenin işi kabul etmeden önce bildirimi gördüğünü onaylaması zorunlu hale getirildi; yönetici kendi hesabını kilitleyemez ve son aktif yöneticiyi pasifleştiremez; kategori/bildirim güncellemelerinde bulunamadı kontrolü eklendi; terminal arızaların tekrar iptal edilmesi engellendi.
-
-## v2.1 güvenilirlik notları
-- Bildirim kaydı veritabanına yazıldıktan sonra push gönderimi başarısız olsa bile arıza işlemi başarısız sayılmaz; push daha sonra retry cron'u ile denenir.
-- Teknisyen ataması yarış durumunda atomik durum kontrolü ile korunur.
-- Yönetici revizyon notu arayüzde zorunlu alan olarak tutulur.
-
-## v2.4 düzeltmeleri
-- Demo kullanıcıları artık `randomUUID()` string `_id` ile oluşturulur; oturum sorguları ile kullanıcı kimliği tipi tutarlıdır.
-- `import:engines` hem eski `engines/oil/maintTypes` export formatını hem de `data/agm-motors.json` içindeki `motors[]` snapshot formatını destekler.
-- Next.js 16 için root `proxy.ts` eklendi; sayfa seviyesinde oturum ve rol yönlendirmesi yapılır. API route'ları ayrıca veritabanı tabanlı yetki kontrolünü sürdürür.
-
-## v3.0.0 — güvenlik ve denetim sertleştirmesi
-- Login dışındaki mutasyon endpoint'lerine MongoDB tabanlı kullanıcı/IP rate limiting eklendi.
-- Breakdown audit olaylarına `fieldChanges` ile eski/yeni değer diff'i eklendi.
-- Yönetici için fiziksel silme yerine geri izlenebilir breakdown arşivleme eklendi.
-- Arşivli kayıtlar varsayılan listelerden çıkarıldı ve operasyonları kilitlendi.
-- Temel domain tipleri (`Breakdown`, `BreakdownEvent`, `Notification`, `Motor`, `Category`, `Attachment`) genişletildi.
-- ESLint 9 + `eslint-config-next` ve Prettier yapılandırması eklendi.
-
-## v4.1 — arşiv filtre düzeltmesi, öngörü raporları, çevrimdışı arıza bildirimi
-- `archived: true` filtresi ana sayfa, arıza listesi, teknisyen kuyruğu ve motor sayfalarına da uygulandı (önceden yalnızca API'de uygulanıyordu, arşivlenmiş kayıtlar bu sayfalarda görünmeye devam ediyordu).
-- Gelişmiş raporlar sayfasına, API'de zaten hesaplanan ama arayüzde gösterilmeyen "Tekrarlayan Kök Nedenler" ve "Motor Risk / Öngörü Görünümü" (son 90 gün arıza sıklığı, ort. saat/arıza, risk etiketi) bölümleri eklendi.
-- Çevrimdışı arıza bildirimi: `/arizalar/yeni` formunda ağ hatası oluşursa kayıt tarayıcıda IndexedDB'ye alınır ve Background Sync ile (desteklemeyen tarayıcılarda `online` olayı ile) bağlantı gelince otomatik gönderilir. Kullanıcıya bekleyen kayıt sayısı gösterilir.
-
-
-## v5.0 — TypeScript ve kalite sertleştirmesi
-- Uygulama kaynaklarında kalan `any` kullanımları kaldırıldı; form, rapor, bildirim, motor ve iş akışı tipleri açık hale getirildi.
-- Teknisyen/yönetici arıza aksiyonları `lib/breakdown-workflow.ts` içinde merkezi ve test edilebilir hale getirildi.
-- Rapor tarih, süre, ortalama ve CSV güvenliği yardımcıları `lib/report-utils.ts` altında toplandı.
-- Audit API'si ve rapor yardımcıları güçlü TypeScript tipleriyle yeniden düzenlendi.
-- Notification cron endpoint'i artık gerçekten başarısız push bildirimlerini retry ediyor ve yanıtsız arızaları eskale ediyor; önceki sürümde endpoint yalnızca başarı mesajı dönüyordu.
-- `workflow-check` scripti JavaScript'ten TypeScript'e taşındı.
-- Node test runner + `tsx` ile workflow yetki/geçişleri ve rapor yardımcıları için otomatik testler eklendi.
-- `npm run verify` komutu typecheck + lint + test zincirini tek komutta çalıştırır.
-
-### Doğrulama
-Bu paket üzerinde bağımlılık kurulumu bu çalışma ortamında ağ/kurulum zaman aşımı nedeniyle tamamlanamadı. Buna rağmen bağımlılıktan bağımsız yeni domain ve rapor yardımcı modülleri `tsc --strict` ile ayrı bir TypeScript derleme kontrolünden geçirildi. Kullanıcı ortamında `npm install` sonrasında önerilen ilk komut `npm run verify` olmalıdır.
+## Proje yapısı (özet)
+```
+app/                    Next.js App Router sayfaları ve API route'ları
+  api/                  Sunucu uçları (breakdowns, duty, categories, users, reports, cron, ...)
+  yonetim/              Yönetici sayfaları (kullanıcılar, kategoriler, nöbet planı, denetim günlüğü, oturumlar)
+  arizalar/             Arıza listesi, oluşturma, detay, düzenleme
+components/             Paylaşılan React bileşenleri (breakdown, reports, profile, ui/...)
+lib/                    Sunucu/paylaşılan mantık (auth, permissions, db, notify, tz, night-duty-assign, ...)
+scripts/                seed, vapid, import, migrate, workflow-check
+tests/                  Node test runner ile otomatik testler
+```

@@ -216,6 +216,15 @@ select { background: #0a1318; color: white; border: 1px solid var(--line); borde
 .search-result-text { display: grid; gap: 2px; overflow: hidden; }
 .search-result-text small { color: var(--muted); }
 
+/* —— Canlı saat —— */
+.live-clock {
+  font-family: var(--font-mono), ui-monospace, 'SF Mono', Consolas, monospace;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  color: var(--accent);
+  letter-spacing: 0.5px;
+}
+
 /* —— Toggle switch —— */
 .switch {
   appearance: none;
@@ -473,6 +482,60 @@ select { background: #0a1318; color: white; border: 1px solid var(--line); borde
     font-size: 16px;
     line-height: 1;
   }
+  .mobile-nav-more-trigger {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-family: inherit;
+  }
+  .mobile-more-backdrop {
+    align-items: flex-end;
+    padding: 0;
+  }
+  .mobile-more-sheet {
+    width: 100%;
+    background: #0e1a20;
+    border: 1px solid var(--line);
+    border-bottom: none;
+    border-radius: 18px 18px 0 0;
+    padding: 10px 14px calc(14px + env(safe-area-inset-bottom, 0px));
+    display: grid;
+    gap: 2px;
+    max-height: 75vh;
+    overflow-y: auto;
+    animation: sheet-up 0.18s ease-out;
+  }
+  @keyframes sheet-up {
+    from { transform: translateY(16px); opacity: 0.6; }
+    to { transform: translateY(0); opacity: 1; }
+  }
+  .mobile-more-handle {
+    width: 40px;
+    height: 4px;
+    border-radius: 999px;
+    background: var(--line);
+    margin: 2px auto 10px;
+  }
+  .mobile-more-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 10px;
+    border-bottom: 1px solid var(--line);
+    color: var(--text);
+    background: none;
+    border-left: none;
+    border-right: none;
+    border-top: none;
+    text-align: left;
+    font-size: 15px;
+    width: 100%;
+    cursor: pointer;
+    font-family: inherit;
+  }
+  .mobile-more-row:last-of-type { border-bottom: none; }
+  .mobile-more-search { color: var(--accent); font-weight: 600; }
+  .mobile-more-cancel { justify-content: center; color: var(--muted); margin-top: 4px; }
   .main {
     padding-bottom: 84px;
   }
