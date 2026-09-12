@@ -34,7 +34,7 @@ Mevcut AGM planlı bakım uygulamasından tamamen bağımsız, arıza/breakdown 
 - Mesai dışı atamalarda, teknisyenin ulaşım süresi kadar yanıt/işe başlama eskalasyon eşikleri ötelenir; raporlarda **Mesai İçi** ve **Mesai Dışı / Nöbetçi Performansı** SLA metrikleri ayrı hesaplanır.
 
 ### Bildirimler
-- Kalıcı MongoDB bildirim kayıtları + Web Push + WhatsApp (Vercel Blob değil, ayrı outbox kuyruğu ile kuyruklanıp gönderilir).
+- Kalıcı MongoDB bildirim kayıtları + Web Push + WhatsApp (ayrı outbox kuyruğu ile kuyruklanıp gönderilir).
 - Kullanıcılar profil sayfasından kendi WhatsApp bildirim tercihini yönetebilir.
 - Yanıtsız arızalar için kademeli eskalasyon (15 / 30 / 60 dk); nöbetçi ulaşım süresi bu eşiklere otomatik eklenir.
 - Bildirim kaydı push gönderimi başarısız olsa bile arıza işlemini bloklamaz; push daha sonra retry cron'u ile tekrar denenir.
@@ -90,28 +90,3 @@ npm run typecheck   # tsc --noEmit
 npm run lint        # eslint .
 npm run test        # tsx --test "tests/**/*.test.ts"
 npm run verify       # üçünü sırayla çalıştırır — her PR öncesi önerilir
-```
-`tests/` altında RBAC yetki matrisi, arıza iş akışı geçişleri, tekrarlayan arıza eşikleri, Türkiye saat dilimi (mesai dışı/hafta sonu sınırları), regex-injection koruması ve rapor yardımcıları için otomatik testler bulunur.
-
-## Vercel dağıtımı ve cron
-Cron endpoint'i: `/api/cron/notifications` — `CRON_SECRET` ile korunur ve şunları yapar:
-- Başarısız push bildirimlerini yeniden dener,
-- Yanıtsız arızaları eskale eder,
-- Pazartesi günleri o haftanın nöbet planı eksikse yöneticilere uyarır.
-
-`vercel.json` içindeki Vercel Cron, Hobby planın günlük sınırı nedeniyle günde 1 kez (`0 3 * * *` UTC → 06:00 Türkiye saati) çalışacak şekilde ayarlıdır. Bildirim tekrar deneme/eskalasyonun gerçek zamanlıya yakın (ör. 5 dakikada bir) çalışması isteniyorsa, ücretsiz bir dış cron servisi (ör. cron-job.org) aynı endpoint'i `Authorization: Bearer <CRON_SECRET>` header'ıyla çağıracak şekilde ayarlanabilir. Pro plana geçilirse `vercel.json`'daki schedule `*/5 * * * *` olarak değiştirilebilir.
-
-## AGM motor veri seti
-`data/agm-motors.json`, mevcut AGM bakım sistemindeki motorların son alınan çalışma saati ve yük değerlerini içerir. `npm run seed` bu motorları ilk kurulumda yeni veritabanına aktarır; mevcut motorların çalışma saatlerini tekrar seed çalıştırıldığında üzerine yazmaz. Canlı sistemden yeni bir aktarım için: `npm run import:engines -- /path/seed_data.json` (hem eski `engines/oil/maintTypes` export formatını hem `data/agm-motors.json` içindeki `motors[]` snapshot formatını destekler).
-
-## Proje yapısı (özet)
-```
-app/                    Next.js App Router sayfaları ve API route'ları
-  api/                  Sunucu uçları (breakdowns, duty, categories, users, reports, cron, ...)
-  yonetim/              Yönetici sayfaları (kullanıcılar, kategoriler, nöbet planı, denetim günlüğü, oturumlar)
-  arizalar/             Arıza listesi, oluşturma, detay, düzenleme
-components/             Paylaşılan React bileşenleri (breakdown, reports, profile, ui/...)
-lib/                    Sunucu/paylaşılan mantık (auth, permissions, db, notify, tz, night-duty-assign, ...)
-scripts/                seed, vapid, import, migrate, workflow-check
-tests/                  Node test runner ile otomatik testler
-```
