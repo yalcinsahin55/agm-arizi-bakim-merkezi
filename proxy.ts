@@ -71,15 +71,9 @@ export async function proxy(request: NextRequest) {
   }
 }
 
+
 export const config = {
   matcher: [
-    /*
-     * Aşağıdakiler HARİÇ tüm istekler:
-     * - api
-     * - _next/static & _next/image
-     * - favicon, manifest, service worker
-     * - tüm icon dosyaları (png, ico)
-     */
-    '/((?!api|_next/static|_next/image|favicon.ico|manifest.webmanifest|robots.txt|sw.js|icon-.*\\.png|apple-touch-icon\\.png|.*\\.png|.*\\.ico|.*\\.webmanifest).*)',
+    '/((?!api|_next/static|_next/image|favicon.ico|manifest.webmanifest|robots.txt|sw.js|icon-.*\\.png|apple-touch-icon\\.png|.*\\.png|.*\\.ico|.*\\.webmanifest|\\.well-known).*)',
   ],
 };
