@@ -1,0 +1,8 @@
+[{
+  "relation": ["delegate_permission/common.handle_all_urls"],
+  "target": {
+    "namespace": "android_app",
+    "package_name": "com.korfezenerji.agmarizi",
+    "sha256_cert_fingerprints": ["81:2E:4E:34:4F:83:1C:97:65:A2:5D:83:52:10:D2:62:9D:6D:36:53:15:C5:C4:3A:7E:3C:CB:5C:A7:BD:EB:7C"]
+  }
+}]
