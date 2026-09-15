@@ -10,7 +10,7 @@ function isAuthorized(req: NextRequest): boolean {
   return auth === `Bearer ${secret}`;
 }
 
-export async function POST(req: NextRequest) {
+async function runNotificationCron(req: NextRequest) {
   if (!isAuthorized(req)) {
     return NextResponse.json({ error: 'Yetkisiz erişim' }, { status: 401 });
   }
@@ -33,4 +33,15 @@ export async function POST(req: NextRequest) {
     console.error('Notification cron failed:', error);
     return NextResponse.json({ error: 'Bildirim bakım görevi başarısız oldu' }, { status: 500 });
   }
+}
+
+// Vercel'in vercel.json'daki zamanlanmış cron tetiklemesi bu endpoint'e GET isteği atar.
+export async function GET(req: NextRequest) {
+  return runNotificationCron(req);
+}
+
+// GitHub Actions workflow'u (.github/workflows/cron-notifications.yml) her 5 dakikada
+// bir bu endpoint'e POST isteği atar; aynı mantığı POST için de açık tutuyoruz.
+export async function POST(req: NextRequest) {
+  return runNotificationCron(req);
 }
