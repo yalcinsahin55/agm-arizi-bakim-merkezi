@@ -32,6 +32,24 @@ function groupBy(rows: ReportRow[], idField: string, nameField: string) {
     }
     return [...map.values()].sort((a, b) => b.count - a.count);
 }
+// Belirli bir alana (motorId/categoryId gibi) göre satırları tek geçişte gruplar.
+// categorySla ve predictive hesaplamaları eskiden her kategori/motor için typedRows
+// dizisinin tamamını yeniden taratıyordu (O(grup×satır)); bu, tek geçişte hazırlanan
+// haritadan O(1) okuma yapılmasını sağlar.
+function indexRowsBy(rows: ReportRow[], idField: string): Map<string, ReportRow[]> {
+    const map = new Map<string, ReportRow[]>();
+    for (const row of rows) {
+        const id = String(row[idField] ?? '');
+        if (!id)
+            continue;
+        const list = map.get(id);
+        if (list)
+            list.push(row);
+        else
+            map.set(id, [row]);
+    }
+    return map;
+}
 export async function GET(req: Request) {
     const user = await getCurrentUser();
     if (!user || !['yonetici', 'goruntuleyici'].includes(user.role)) {
@@ -134,11 +152,15 @@ export async function GET(req: Request) {
     const byMotor = groupBy(typedRows, 'motorId', 'motorName');
     const byCategory = groupBy(typedRows, 'categoryId', 'categoryName');
     const byTechnician = groupBy(typedRows, 'assignedTechnicianId', 'assignedTechnicianName');
+    // Kategori ve motor bazlı hesaplamalarda tekrar tekrar filtrelenmesin diye
+    // satırlar tek geçişte kategori/motor id'sine göre önceden gruplanıyor.
+    const rowsByCategory = indexRowsBy(typedRows, 'categoryId');
+    const rowsByMotor = indexRowsBy(typedRows, 'motorId');
     // Kategori bazlı SLA: her kategori için ortalama ilk yanıt (createdAt->seenAt)
     // ve ortalama çözüm (startedAt->closedAt) süresi. Yöneticinin hangi arıza
     // türünde teknisyenlerin yavaş kaldığını görmesini sağlar.
     const categorySla = byCategory.map((cat) => {
-        const catRows = typedRows.filter((row) => String(row.categoryId) === cat.id);
+        const catRows = rowsByCategory.get(cat.id) || [];
         const response = catRows
             .map((row) => minutesBetween(row.createdAt, row.seenAt))
             .filter((v): v is number => v !== null);
@@ -165,7 +187,7 @@ export async function GET(req: Request) {
             .slice(0, 20);
     })();
     const predictive = byMotor.slice(0, 20).map((motor) => {
-        const motorRows = typedRows.filter((row) => String(row.motorId) === motor.id);
+        const motorRows = rowsByMotor.get(motor.id) || [];
         const hours = motorRows
             .map((row) => Number(row.motorHours))
             .filter((value) => Number.isFinite(value) && value >= 0)
@@ -267,4 +289,3 @@ export async function GET(req: Request) {
 
     return NextResponse.json(payload);
 }
-
