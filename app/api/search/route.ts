@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
 import { escapeRegex } from '@/lib/escape-regex';
+import { breakdownScopeFor } from '@/lib/breakdown-scope';
 
 type SearchResult = {
     type: 'breakdown' | 'motor' | 'user';
@@ -26,11 +27,7 @@ export async function GET(req: Request) {
     // (rol bazlı erişim /api/breakdowns ile aynı mantığı izler).
     const breakdownScope = {
         archived: { $ne: true },
-        ...(u.role === 'yonetici' || u.role === 'goruntuleyici'
-            ? {}
-            : u.role === 'teknisyen'
-                ? { assignedTechnicianId: u._id }
-                : { createdBy: u._id }),
+        ...breakdownScopeFor(u),
         $or: [{ code: rx }, { title: rx }, { motorName: rx }, { categoryName: rx }],
     };
     const breakdowns = await d.collection('breakdowns').find(breakdownScope)
