@@ -1389,3 +1389,151 @@ input:focus-visible, select:focus-visible, textarea:focus-visible,
   0% { background-position: 100% 0; }
   100% { background-position: -100% 0; }
 }
+
+/* ========== v5.2 final responsive safety fixes ========== */
+html {
+  min-width: 320px;
+  overflow-x: hidden;
+}
+
+body {
+  min-width: 0;
+  overflow-x: hidden;
+}
+
+img,
+svg,
+video,
+canvas {
+  max-width: 100%;
+  height: auto;
+}
+
+button,
+.btn,
+a {
+  -webkit-tap-highlight-color: transparent;
+}
+
+button,
+.btn,
+input,
+select,
+textarea {
+  min-width: 0;
+}
+
+.table-wrap {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+}
+
+.table-wrap .table {
+  min-width: 620px;
+}
+
+.login-screen > *,
+.login > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* Pseudo-elements do not render reliably on replaced img elements. */
+.login-logo {
+  position: relative;
+  z-index: 1;
+}
+
+.login-brand {
+  min-width: 0;
+}
+
+.login-brand > div,
+.login-brand > section {
+  min-width: 0;
+}
+
+@media (max-width: 480px) {
+  .top {
+    gap: 6px;
+  }
+
+  .brand-name {
+    font-size: 16px !important;
+  }
+
+  .brand-tag {
+    max-width: 180px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .account-btn {
+    width: 30px;
+    height: 30px;
+  }
+
+  .cards,
+  .dashboard-kpis,
+  .kpi-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .card,
+  .login-card {
+    padding: 14px;
+    border-radius: 12px;
+  }
+
+  .login-card {
+    padding: 22px 16px 18px;
+  }
+
+  .login-title {
+    font-size: 24px;
+  }
+
+  .login-brand {
+    gap: 10px;
+  }
+
+  .login-logo {
+    width: 54px !important;
+    height: 54px !important;
+  }
+
+  .response-steps {
+    grid-template-columns: 1fr;
+  }
+
+  .duty-week-selects,
+  .duty-week-selects label {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .pwa-banner {
+    grid-template-columns: 38px minmax(0, 1fr);
+  }
+
+  .pwa-banner-actions {
+    grid-column: 1 / -1;
+    flex-direction: row;
+    justify-content: flex-end;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .critical-dispatch-card,
+  .login-card,
+  .login-logo:after,
+  .page-enter,
+  .skeleton,
+  .toast,
+  .notif-pulse-card,
+  .pwa-banner {
+    animation: none !important;
+  }
+}
