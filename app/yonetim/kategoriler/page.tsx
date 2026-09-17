@@ -44,7 +44,18 @@ export default function Cats() {
   }, []);
 
   const roots = useMemo(() => rows.filter((x) => !x.parentId), [rows]);
-  const children = (id: string) => rows.filter((x) => String(x.parentId) === id);
+  const childrenByParent = useMemo(() => {
+    const map = new Map<string, Category[]>();
+    rows.forEach((x) => {
+      if (!x.parentId) return;
+      const key = String(x.parentId);
+      const list = map.get(key) || [];
+      list.push(x);
+      map.set(key, list);
+    });
+    return map;
+  }, [rows]);
+  const children = (id: string) => childrenByParent.get(id) || [];
 
   async function createCategory(payload: { name: string; parentId: string | null; nightRouteType?: TechnicianType }) {
     const r = await fetch('/api/categories', {
