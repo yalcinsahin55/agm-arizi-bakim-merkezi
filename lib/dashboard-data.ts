@@ -2,6 +2,7 @@ import { db } from './db';
 import { turkeyWeekStart } from './tz';
 import type { Breakdown, User } from '@/types';
 import { activeStatuses, buildDayBuckets, buildHourBuckets, daysAgo } from './dashboard-metrics';
+import { breakdownScopeFor } from './breakdown-scope';
 
 export type DashboardData = {
   open: number;
@@ -33,11 +34,7 @@ export async function getDashboardData(u: User): Promise<DashboardData> {
   const b = d.collection<Breakdown>('breakdowns');
   const q: Record<string, unknown> = {
     archived: { $ne: true },
-    ...(u.role === 'yonetici' || u.role === 'goruntuleyici'
-      ? {}
-      : u.role === 'teknisyen'
-        ? { assignedTechnicianId: u._id }
-        : { createdBy: u._id }),
+    ...breakdownScopeFor(u),
   };
 
   const since14 = daysAgo(14);
