@@ -1,5 +1,6 @@
 import { getCurrentUser } from '@/lib/auth';
 import { db } from '@/lib/db';
+import { breakdownScopeFor } from '@/lib/breakdown-scope';
 import Link from 'next/link';
 import BreakdownList from '@/components/BreakdownList';
 
@@ -9,11 +10,7 @@ export default async function Arizalar() {
 
   const q = {
     archived: { $ne: true },
-    ...(u.role === 'yonetici' || u.role === 'goruntuleyici'
-      ? {}
-      : u.role === 'teknisyen'
-        ? { assignedTechnicianId: u._id }
-        : { createdBy: u._id }),
+    ...breakdownScopeFor(u),
   };
 
   const rows = await (await db())
