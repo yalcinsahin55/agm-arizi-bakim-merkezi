@@ -1,16 +1,26 @@
 import { Db, MongoClient } from 'mongodb';
-const uri = process.env.MONGODB_URI;
-if (!uri)
-    throw new Error('MONGODB_URI eksik');
+
 const globalForMongo = globalThis as unknown as {
     mongo?: MongoClient;
 };
-const client = globalForMongo.mongo ?? new MongoClient(uri);
-if (!globalForMongo.mongo)
-    globalForMongo.mongo = client;
 const globalIndex = globalThis as unknown as { agmIndexesPromise?: Promise<void> };
 
+// İstemci artık modül import edilirken değil, ilk gerçek bağlantı denemesinde
+// (db()/indexes() çağrıldığında) oluşturuluyor. Böylece MONGODB_URI tanımlı
+// olmasa bile bu dosyayı import eden modüller (ör. `next build` API route'ları
+// statik olarak değerlendirirken) hatasız yüklenebiliyor; hata sadece
+// gerçekten bağlanılmaya çalışıldığında (istek anında) fırlıyor.
+function getClient(): MongoClient {
+    if (globalForMongo.mongo) return globalForMongo.mongo;
+    const uri = process.env.MONGODB_URI;
+    if (!uri) throw new Error('MONGODB_URI eksik');
+    const client = new MongoClient(uri);
+    globalForMongo.mongo = client;
+    return client;
+}
+
 export async function db(): Promise<Db> {
+    const client = getClient();
     await client.connect();
     const database = client.db(process.env.MONGODB_DB || 'agm_arizi_bakim');
     // Indexleri arka planda bir kez kur (istek yolunu bloklamaz)
@@ -20,6 +30,7 @@ export async function db(): Promise<Db> {
     return database;
 }
 export async function indexes() {
+    const client = getClient();
     await client.connect();
     const database = client.db(process.env.MONGODB_DB || 'agm_arizi_bakim');
     await Promise.all([
@@ -52,4 +63,3 @@ export async function indexes() {
         database.collection('duty_roster').createIndex({ weekStart: 1 }, { unique: true }),
     ]);
 }
-
