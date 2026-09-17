@@ -10,6 +10,7 @@ import { diffFields, writeAudit } from '@/lib/audit';
 import { resolveNightDutyAssignment } from '@/lib/night-duty-assign';
 import { isOffHours } from '@/lib/tz';
 import { notifyTechnicianAssignment } from '@/lib/assign-technician';
+import { breakdownScopeFor } from '@/lib/breakdown-scope';
 import type { Breakdown } from '@/types';
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://agm-arizi-bakim-merkezi-zsru.vercel.app';
 const schema = z.object({
@@ -24,7 +25,7 @@ export async function GET() {
     if (!u)
         return NextResponse.json({ error: 'Giriş gerekli' }, { status: 401 });
     const d = await db();
-    const q = { archived: { $ne: true }, ...(u.role === 'yonetici' || u.role === 'goruntuleyici' ? {} : u.role === 'teknisyen' ? { assignedTechnicianId: u._id } : { createdBy: u._id }) };
+    const q = { archived: { $ne: true }, ...breakdownScopeFor(u) };
     // Liste/yoklama (polling) görünümü ağır alanları (report, description, parts, materials vb.)
     // taşımaz; bu alanlar yalnızca arıza detay sayfasında tek kayıt için çekilir.
     const rows = await d.collection('breakdowns').find(q).sort({ createdAt: -1 }).limit(300).project({
