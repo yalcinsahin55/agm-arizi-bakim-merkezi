@@ -87,11 +87,6 @@ export default async function EquipmentInventory() {
       </div>
 
       {user.role === 'yonetici' && (
-        <div className="row" style={{ marginBottom: 12, gap: 8 }}>
-          <Link className="btn primary" href="/motorlar/saat-yukle">Excel ile Saat Yükle</Link>
-        </div>
-      )}
-      {user.role === 'yonetici' && (
         <section className="card" style={{ marginTop: 16 }}>
           <h2>Yeni Ekipman Ekle</h2>
           <p className="muted">Yeni bir varlık tanımlayın. Daha sonra kaydını açıp bilgilerini değiştirebilirsiniz.</p>
