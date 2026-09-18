@@ -127,6 +127,7 @@ function extraLinksFor(role: Role): ExtraLink[] {
       { href: '/yonetim/nobet', label: 'Nöbetçi Planı' },
       { href: '/yonetim/kategoriler', label: 'Kategoriler' },
       { href: '/motorlar', label: 'Ekipman Envanteri' },
+      { href: '/motorlar/saat-yukle', label: 'Motor Saati Güncelleme' },
       { href: '/arizalar/arsiv', label: 'Arşiv' },
       { href: '/yonetim/audit', label: 'Denetim Günlüğü' },
       { href: '/yonetim/oturumlar', label: 'Aktif Oturumlar' },
