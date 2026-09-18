@@ -128,6 +128,7 @@ export default async function Layout({ children }: { children: React.ReactNode }
                         <Link href="/arizalar/arsiv">Arşiv</Link>
                         <Link href="/raporlar">Gelişmiş Raporlar</Link>
                         <Link href="/motorlar">Ekipman Envanteri</Link>
+                        <Link href="/motorlar/saat-yukle">Motor Saati Güncelleme</Link>
                         <Link href="/yonetim/kategoriler">Kategoriler</Link>
                         <Link href="/yonetim/kullanicilar">Kullanıcılar</Link>
                         <Link href="/yonetim/nobet">Nöbetçi Planı</Link>
