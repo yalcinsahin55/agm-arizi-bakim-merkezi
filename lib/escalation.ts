@@ -81,6 +81,15 @@ export async function escalateUnresponsiveBreakdowns() {
                 workload.sort((a, b) => a.count - b.count);
                 const replacement = workload[0].candidate;
                 const eventId = await createSystemEvent(breakdown as unknown as Breakdown, 'escalation_reassign', `Teknisyen 30 dakika içinde müdahaleye başlamadı; ${replacement.name} otomatik devralma adayı olarak atandı.`, 2);
+                // NOT: escalationLevel burada 2'ye değil 0'a resetlenir. escalationLevel,
+                // "şu anki atanan teknisyen için hangi SLA kontrolleri henüz geçerli"
+                // bilgisini taşır — yeni teknisyenin kendi 15/30/60 dk saatinin baştan
+                // işlemesi gerekir. Aksi halde (eskiden burada escalationLevel:2 yazılıyordu)
+                // "15 dakikada görmedi" kontrolü (currentLevel<1 şartı) bu kayıt için bir
+                // daha HİÇ tetiklenemez hale geliyordu; yeni teknisyen bildirimi hiç açmasa
+                // bile yönetici 60 dakikaya kadar haberdar olamıyordu. Kaç kez devredildiği
+                // ayrı bir reassignCount alanında tutulur ki gerekirse "çok kez devredildi"
+                // durumu da ayrıca izlenebilsin.
                 const result = await database.collection('breakdowns').updateOne({ _id: breakdown._id, escalationLevel: { $lt: 2 } }, {
                     $set: {
                         assignedTechnicianId: replacement._id,
@@ -90,9 +99,10 @@ export async function escalateUnresponsiveBreakdowns() {
                         seenAt: null,
                         acknowledgedAt: null,
                         startedAt: null,
-                        escalationLevel: 2,
+                        escalationLevel: 0,
                         updatedAt: now,
                     },
+                    $inc: { reassignCount: 1 },
                 });
                 if (result.modifiedCount) {
                     await createNotification({
