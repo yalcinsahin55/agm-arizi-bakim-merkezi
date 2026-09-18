@@ -7,7 +7,7 @@ import { createNotification, notifyManagers } from '@/lib/notify';
 import { rateLimit, rateLimitResponse } from '@/lib/security';
 import { writeAudit } from '@/lib/audit';
 import { queueWhatsappMessage, queueWhatsappToManagers } from '@/lib/whatsapp-outbox';
-import { canPerformBreakdownAction, type BreakdownAction } from '@/lib/breakdown-workflow';
+import { canPerformBreakdownAction, isActionAllowedForStatus, type BreakdownAction } from '@/lib/breakdown-workflow';
 import type { Breakdown, User } from '@/types';
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://agm-arizi-bakim-merkezi-zsru.vercel.app';
 const input = z.object({ action: z.enum(['seen', 'accept', 'start', 'submit', 'approve', 'revision']), report: z.string().trim().max(10000).optional(), rootCause: z.string().trim().max(5000).optional(), correctiveAction: z.string().trim().max(5000).optional(), parts: z.array(z.string().trim().min(1).max(200)).max(100).optional(), materials: z.array(z.string().trim().min(1).max(200)).max(100).optional(), note: z.string().trim().max(2000).optional() });
@@ -59,8 +59,11 @@ export async function POST(req: Request, { params }: {
         return NextResponse.json({ error: 'Bu arıza size atanmadı' }, { status: 403 });
     if (['approve', 'revision'].includes(body.action) && !manager)
         return NextResponse.json({ error: 'Yönetici yetkisi gerekli' }, { status: 403 });
-    const allowed: Record<string, string[]> = { seen: ['atandi', 'revizyon'], accept: ['atandi', 'revizyon'], start: ['atandi', 'revizyon'], submit: ['devam_ediyor'], approve: ['onay_bekliyor'], revision: ['onay_bekliyor'] };
-    if (!allowed[body.action].includes(String(b.status)))
+    // Durum/aksiyon uyumu artık tek bir yerden (lib/breakdown-workflow.ts) kontrol
+    // ediliyor — bu route'ta ayrıca aynı bilgiyi tutan bir kopya harita yoktu,
+    // önceden burada duran `allowed` haritası canPerformBreakdownAction'ın zaten
+    // kontrol ettiği aynı kuralı ikinci kez, ayrı bir kopyada tutuyordu.
+    if (!isActionAllowedForStatus(action, b.status))
         return NextResponse.json({ error: `Bu işlem '${b.status}' durumunda yapılamaz` }, { status: 409 });
     if (body.action === 'seen' && b.seenAt)
         return NextResponse.json({ ok: true, status: b.status, already: true });
@@ -117,6 +120,14 @@ export async function POST(req: Request, { params }: {
         set.submittedAt = null;
         set.completedAt = null;
         set.closedAt = null;
+        // Revizyon, teknisyen için fiilen yeni bir iş turu başlatır. assignedAt
+        // (eskalasyon saatinin başlangıcı) ve escalationLevel burada sıfırlanmazsa,
+        // teknisyen revizyonu "start" ettiği anda eski (saatler önceki) assignedAt
+        // üzerinden hesaplanan dakika farkı 60'ı çoktan geçmiş olabiliyor ve
+        // teknisyen o an aktif çalışırken sisteme "60 dakikadır ilerleme yok"
+        // diye sahte bir kritik eskalasyon uyarısı gönderiliyordu.
+        set.assignedAt = now;
+        set.escalationLevel = 0;
     }
     const filter: { _id: ObjectId; status: typeof b.status; assignedTechnicianId?: string } = {
         _id: bid,
@@ -195,4 +206,3 @@ export async function POST(req: Request, { params }: {
 
     return NextResponse.json({ ok: true, status });
 }
-
