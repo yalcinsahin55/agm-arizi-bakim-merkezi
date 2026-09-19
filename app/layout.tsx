@@ -30,6 +30,7 @@ import LogoutButton from '@/components/LogoutButton';
 import LoginGate from '@/components/LoginGate';
 import Providers from '@/components/Providers';
 import MobileNav from '@/components/MobileNav';
+import ThemeToggle from '@/components/ThemeToggle';
 import PwaRegister from '@/components/PwaRegister';
 import Logo from '@/components/Logo';
 import GlobalSearch from '@/components/GlobalSearch';
@@ -61,7 +62,7 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   themeColor: [
     { media: '(prefers-color-scheme: dark)', color: '#0b151a' },
-    { media: '(prefers-color-scheme: light)', color: '#0b151a' },
+    { media: '(prefers-color-scheme: light)', color: '#ffffff' },
   ],
   width: 'device-width',
   initialScale: 1,
@@ -80,6 +81,17 @@ export default async function Layout({ children }: { children: React.ReactNode }
   const u = await getCurrentUser();
   return (
     <html lang="tr" className={`${fontSans.variable} ${fontDisplay.variable} ${fontMono.variable}`}>
+      <head>
+        {/* Sayfa ilk boyandığında yanlış temanın bir an görünmesini (FOUC)
+            önlemek için tema tercihi hydration'dan önce, senkron uygulanır. */}
+        <script
+          // eslint-disable-next-line react/no-danger
+          dangerouslySetInnerHTML={{
+            __html:
+              "try{var t=localStorage.getItem('agm-theme');if(t==='light'||t==='dark'){document.documentElement.setAttribute('data-theme',t);}}catch(e){}",
+          }}
+        />
+      </head>
       <body className="app-body">
         <Providers>
           <div className="shell">
@@ -94,6 +106,7 @@ export default async function Layout({ children }: { children: React.ReactNode }
               {u ? (
                 <div className="top-user">
                   <GlobalSearch />
+                  <ThemeToggle />
                   <Link href="/profil" className="account-btn" title="Hesabım" aria-label="Hesabım">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                       <circle cx="12" cy="8" r="3.4" />
