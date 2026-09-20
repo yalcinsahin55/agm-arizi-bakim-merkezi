@@ -138,7 +138,7 @@ function extraLinksFor(role: Role): ExtraLink[] {
     return [{ href: '/motorlar', label: 'Ekipman Envanteri' }, { href: '/profil', label: 'Hesabım' }];
   }
   if (role === 'teknisyen') {
-    return [{ href: '/raporlar', label: 'Raporlar' }, { href: '/profil', label: 'Hesabım' }];
+    return [{ href: '/profil', label: 'Hesabım' }];
   }
   return [{ href: '/profil', label: 'Hesabım' }];
 }
