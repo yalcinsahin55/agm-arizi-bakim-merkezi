@@ -9,11 +9,14 @@ export default function HoursUploadForm() {
   const [busy, setBusy] = useState(false);
   const [fileName, setFileName] = useState<string | null>(null);
   const [fileSize, setFileSize] = useState<string | null>(null);
+  const [recordDate, setRecordDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [result, setResult] = useState<{
     updated: number;
     skipped: number;
     errors: string[];
     totalRows: number;
+    recordDateKey?: string;
+    isToday?: boolean;
   } | null>(null);
 
   function onFileChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -48,6 +51,7 @@ export default function HoursUploadForm() {
     try {
       const form = new FormData();
       form.append('file', file);
+      form.append('recordDate', recordDate);
       const res = await fetch('/api/motors/hours', { method: 'POST', body: form });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -57,7 +61,9 @@ export default function HoursUploadForm() {
       setResult(data);
       toast.success(
         'Saatler güncellendi',
-        `${data.updated} ekipman güncellendi${data.errors?.length ? `, ${data.errors.length} hata` : ''}.`,
+        data.isToday === false
+          ? `${data.updated} ekipman için ${data.recordDateKey} tarihli geçmiş kaydı eklendi (bugünün güncel verisi değişmedi).`
+          : `${data.updated} ekipman güncellendi${data.errors?.length ? `, ${data.errors.length} hata` : ''}.`,
       );
       clearFile();
     } catch {
@@ -85,6 +91,21 @@ export default function HoursUploadForm() {
         <p className="muted">
           Excel (.xlsx) veya CSV dosyası ile motor çalışma saatlerini toplu güncelleyin.
           Sütun başlıkları: <b>MOTOR</b>, <b>MOTOR ÇALIŞMA SAATİ</b>, isteğe bağlı <b>YÜK</b> (kW).
+        </p>
+
+        <label style={{ display: 'grid', gap: 6, marginTop: 12, maxWidth: 220 }}>
+          Bu veriler hangi tarihe ait?
+          <input
+            type="date"
+            value={recordDate}
+            max={new Date().toISOString().slice(0, 10)}
+            onChange={(e) => setRecordDate(e.target.value)}
+          />
+        </label>
+        <p className="muted" style={{ fontSize: 12, marginTop: 4 }}>
+          Varsayılan bugün. Geçmiş bir tarih seçersen (ör. unutulan dünkü yükleme), kayıt geçmişe
+          eklenir ama ekipmanların şu anki güncel saat/yük değerini değiştirmez — sadece bugün
+          tarihli bir yükleme güncel değerleri değiştirir.
         </p>
 
         <div className="row" style={{ gap: 12, flexWrap: 'wrap', marginTop: 12, alignItems: 'center' }}>
