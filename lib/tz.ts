@@ -52,6 +52,11 @@ export function isOffHours(date: Date = new Date()): boolean {
   return isNightShift(date) || turkeyIsWeekend(date);
 }
 
+/** Verilen YYYY-MM-DD anahtarının Türkiye yerel gün başlangıcına karşılık gelen UTC anını verir. */
+export function turkeyDateFromKey(key: string): Date {
+  return new Date(`${key}T00:00:00+03:00`);
+}
+
 /** İçinde bulunulan haftanın Pazartesi'sinin tarihi (YYYY-MM-DD), Türkiye yereline göre. */
 export function turkeyWeekStart(date: Date = new Date()): string {
   const shifted = toTurkeyShifted(date);
