@@ -40,6 +40,9 @@ export default async function SaatYuklePage() {
         <Link className="btn" href="/motorlar">
           ← Ekipman Envanteri
         </Link>
+        <Link className="btn" href="/motorlar/gecmis">
+          Saat Geçmişini Görüntüle
+        </Link>
       </div>
       <div className="dashboard-head" style={{ marginTop: 14 }}>
         <div>
