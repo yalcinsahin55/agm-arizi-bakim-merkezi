@@ -128,6 +128,7 @@ function extraLinksFor(role: Role): ExtraLink[] {
       { href: '/yonetim/kategoriler', label: 'Kategoriler' },
       { href: '/motorlar', label: 'Ekipman Envanteri' },
       { href: '/motorlar/saat-yukle', label: 'Motor Saati Güncelleme' },
+      { href: '/motorlar/gecmis', label: 'Motor Saati Geçmişi' },
       { href: '/arizalar/arsiv', label: 'Arşiv' },
       { href: '/yonetim/audit', label: 'Denetim Günlüğü' },
       { href: '/yonetim/oturumlar', label: 'Aktif Oturumlar' },
@@ -135,7 +136,11 @@ function extraLinksFor(role: Role): ExtraLink[] {
     ];
   }
   if (role === 'goruntuleyici') {
-    return [{ href: '/motorlar', label: 'Ekipman Envanteri' }, { href: '/profil', label: 'Hesabım' }];
+    return [
+      { href: '/motorlar', label: 'Ekipman Envanteri' },
+      { href: '/motorlar/gecmis', label: 'Motor Saati Geçmişi' },
+      { href: '/profil', label: 'Hesabım' },
+    ];
   }
   if (role === 'teknisyen') {
     return [{ href: '/profil', label: 'Hesabım' }];
