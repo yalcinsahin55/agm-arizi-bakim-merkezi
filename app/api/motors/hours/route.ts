@@ -4,6 +4,7 @@ import { db } from '@/lib/db';
 import { rateLimit, rateLimitResponse } from '@/lib/security';
 import { getCurrentUser } from '@/lib/auth';
 import { writeAudit } from '@/lib/audit';
+import { turkeyDateFromKey, turkeyDateKey } from '@/lib/tz';
 import type { Motor } from '@/types';
 
 type HourRow = {
@@ -91,11 +92,14 @@ export async function POST(req: Request) {
 
   const contentType = req.headers.get('content-type') || '';
   let rows: HourRow[] = [];
+  let recordDateKey = turkeyDateKey();
 
   try {
     if (contentType.includes('multipart/form-data')) {
       const form = await req.formData();
       const file = form.get('file');
+      const recordDateRaw = form.get('recordDate');
+      if (typeof recordDateRaw === 'string' && recordDateRaw.trim()) recordDateKey = recordDateRaw.trim();
       if (!(file instanceof File)) {
         return NextResponse.json({ error: 'Excel dosyası gerekli (file alanı).' }, { status: 400 });
       }
@@ -140,11 +144,12 @@ export async function POST(req: Request) {
         rows = parseWorkbook(buffer);
       }
     } else {
-      const body = (await req.json().catch(() => ({}))) as { rows?: HourRow[] };
+      const body = (await req.json().catch(() => ({}))) as { rows?: HourRow[]; recordDate?: string };
       if (!Array.isArray(body.rows)) {
         return NextResponse.json({ error: 'JSON body.rows veya multipart file gerekli.' }, { status: 400 });
       }
       rows = body.rows;
+      if (typeof body.recordDate === 'string' && body.recordDate.trim()) recordDateKey = body.recordDate.trim();
     }
   } catch (e) {
     return NextResponse.json({ error: 'Dosya okunamadı', detail: String(e) }, { status: 400 });
@@ -153,6 +158,21 @@ export async function POST(req: Request) {
   if (!rows.length) {
     return NextResponse.json({ error: 'Dosyada satır bulunamadı.' }, { status: 400 });
   }
+
+  // Kullanıcı bu yüklemenin hangi tarihe ait olduğunu seçebiliyor (varsayılan: bugün).
+  // Geçmişe dönük bir tarih girilirse (ör. dün unutulan bir yükleme), bu kayıt
+  // geçmişe (motor_hour_history) yazılır ama ekipmanın "güncel" saat/yük alanını
+  // EZMEZ — aksi halde eski bir tarih girmek yanlışlıkla bugünün canlı verisini
+  // geri alabilirdi. Sadece bugüne ait bir yükleme canlı değerleri günceller.
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(recordDateKey)) {
+    return NextResponse.json({ error: 'Geçersiz tarih formatı.' }, { status: 400 });
+  }
+  const todayKey = turkeyDateKey();
+  if (recordDateKey > todayKey) {
+    return NextResponse.json({ error: 'Gelecek bir tarih için kayıt girilemez.' }, { status: 400 });
+  }
+  const recordDate = turkeyDateFromKey(recordDateKey);
+  const isToday = recordDateKey === todayKey;
 
   const database = await db();
   const motors = await database.collection<Motor>('motors').find({ active: true }).toArray();
@@ -203,7 +223,11 @@ export async function POST(req: Request) {
       set.currentLoad = row.load;
     }
 
-    await database.collection('motors').updateOne({ _id: motor._id as any }, { $set: set });
+    // Sadece "bugün" tarihli yükleme ekipmanın canlı (currentHours/currentLoad)
+    // alanını günceller; geçmişe dönük bir tarih sadece history'e yazılır.
+    if (isToday) {
+      await database.collection('motors').updateOne({ _id: motor._id as any }, { $set: set });
+    }
 
     historyDocs.push({
       motorId: String(motor._id),
@@ -216,6 +240,8 @@ export async function POST(req: Request) {
       updatedByName: user.name,
       source: 'excel-upload',
       createdAt: now,
+      recordDate,
+      recordDateKey,
     });
     updated += 1;
   }
@@ -239,6 +265,8 @@ export async function POST(req: Request) {
     skipped,
     errors,
     totalRows: rows.length,
+    recordDateKey,
+    isToday,
   });
 }
 
