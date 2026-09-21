@@ -55,6 +55,8 @@ export async function indexes() {
         database.collection('login_attempts').createIndex({ updatedAt: 1 }, { expireAfterSeconds: 1800 }),
         database.collection('motor_hour_history').createIndex({ createdAt: -1 }),
         database.collection('motor_hour_history').createIndex({ motorId: 1, createdAt: -1 }),
+        database.collection('motor_hour_history').createIndex({ recordDateKey: -1, motorName: 1 }),
+        database.collection('motor_hour_history').createIndex({ motorId: 1, recordDateKey: -1 }),
         database.collection('breakdowns').createIndex({ archived: 1, motorId: 1, status: 1 }),
         database.collection('rate_limits').createIndex({ windowStart: 1 }, { expireAfterSeconds: 120 }),
         database.collection('sessions').createIndex({ userId: 1, lastSeenAt: -1 }),
